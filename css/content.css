@@ -1,4 +1,4 @@
-/* Simple content pages: apps, projects, learning-with-ai, ferdighetstraer index.
+/* Simple content pages: apps, projects, learning-with-ai, ferdighetstre index.
    Shared tokens/nav/footer/components load first. */
 
 .page-header {
@@ -131,7 +131,7 @@
 }
 .link-tile:hover::after, .link-tile:focus-visible::after { color: var(--accent); transform: translateX(2px); }
 
-/* ---------- subject cards (ferdighetstraer index) ---------- */
+/* ---------- subject cards (ferdighetstre index) ---------- */
 
 .subgroup + .subgroup { margin-top: 2.4rem; }
 

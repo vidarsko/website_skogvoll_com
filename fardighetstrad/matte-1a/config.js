@@ -3,7 +3,7 @@
 /* ------------------------------------------------------------------ */
 /* Ämnesspecifik konfiguration för Matematik 1a (Gy25, yrkesprogram).  */
 /* Laddas FÖRE ../engine.js (den SVENSKA motorn) - se                  */
-/* ferdighetstraer_private/instruks.md → "Fagkonfigurasjon" för vad    */
+/* ferdighetstre_private/instruks.md → "Fagkonfigurasjon" för vad    */
 /* som kan/ska sättas här (samma kontrakt som den norska motorn).      */
 /* ------------------------------------------------------------------ */
 

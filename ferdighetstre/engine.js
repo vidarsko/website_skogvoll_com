@@ -1,30 +1,20 @@
 'use strict';
 
 /* ------------------------------------------------------------------ */
-/* Delt motor for färdighetsträd-appene (SVENSK variant).              */
+/* Delt motor for ferdighetstre-appene.                                */
 /*                                                                      */
-/* Dette er den svenske søstermotoren til ../ferdighetstre/engine.js */
-/* - samme logikk (CSV-parsing, DAG-validering, kolonne/lagdelt        */
-/* layout-algoritme, rendering, localStorage-progresjon og komposisjon */
-/* av KI-instruks), men ALL brukervendt tekst og begge KI-instruks-    */
-/* malene er skrevet på svenska. Det finnes bevisst INGEN språkbryter  */
-/* her - dette er en selvstendig, énspråklig motor. Se «To motorer,    */
-/* ett datamodell» i ferdighetstre_private/instruks.md.              */
+/* Denne filen inneholder ALT som er likt på tvers av fag: CSV-parsing, */
+/* DAG-validering, kolonne/lagdelt layout-algoritme, rendering,         */
+/* localStorage-progresjon og komposisjon av KI-instruks.               */
 /*                                                                      */
-/* VIKTIG: endres logikken her (layout, DAG-validering, en ny knapp,   */
-/* progresjonsmodell), skal samme endring speiles manuelt i            */
-/* ../ferdighetstre/engine.js, og omvendt - kun teksten skal skille  */
-/* de to filene.                                                       */
-/*                                                                      */
-/* Alt som er spesifikt for ett fag (lagringsnøkkel, emne-rekkefølge,  */
+/* Alt som er spesifikt for ett fag (lagringsnøkkel, emne-rekkefølge,   */
 /* KI-instruksmal, hjelpemiddel-tekst, evt. layout-justeringer) hentes  */
 /* fra window.FT_CONFIG, som hvert fags config.js må definere FØR denne */
-/* filen lastes - samme config-kontrakt som den norske motoren, se     */
-/* ferdighetstre_private/instruks.md → «Fagkonfigurasjon».           */
+/* filen lastes. Se ferdighetstre/instruks.md for kravene til config. */
 /* ------------------------------------------------------------------ */
 
 if (!window.FT_CONFIG) {
-  throw new Error('FT_CONFIG saknas. Ladda fagets config.js innan engine.js.');
+  throw new Error('FT_CONFIG mangler. Last inn fagets config.js før engine.js.');
 }
 
 const CONFIG = window.FT_CONFIG;
@@ -51,117 +41,117 @@ const LAYOUT = Object.assign({
 }, CONFIG.layoutOverrides || {});
 
 // Rekkefølge på emne-kolonnene i kartet, venstre til høyre. Emner som finnes i
-// noder.csv men ikke i denne listen havner til slutt (alfabetisk). Merk: den
-// katalogiserende samlekolonnen for noder uten "emne" heter "Övrigt" her
-// (svensk), ikke "Annet" (norsk) - se buildNodeIndex/validateReferences.
+// noder.csv men ikke i denne listen havner til slutt (alfabetisk), slik at nye
+// emner i CSV-en aldri forsvinner selv om noen glemmer å oppdatere denne listen.
 const TOPIC_ORDER = CONFIG.topicOrder || [];
 
-// Fallback-emnenavn (svensk) for noder som mangler "emne" i noder.csv.
-const FALLBACK_TOPIC = 'Övrigt';
-
-// Generell mal for KI-instruksen (svensk variant). Rollebeskrivelsen,
-// samtalereglene og vurderings-/mestringsdelen er identiske i struktur som i
-// den norske motoren, men skrevet på svenska her. Faget bidrar kun med
-// `courseName` (hvilket fag/kurs dette er) og valgfritt `formuleringsfokus`
-// (fagspesifikke eksempler på formuleringsfeil KI-en bør kommentere). Et fag
-// kan også overstyre HELE malen via `aiInstructionTemplate` hvis den delte
+// Generell mal for KI-instruksen. Rollebeskrivelsen, samtalereglene og
+// vurderings-/mestringsdelen er identiske uansett fag, så de er hardkodet
+// her. Faget bidrar kun med `courseName` (hvilket fag/kurs dette er) og
+// valgfritt `formuleringsfokus` (fagspesifikke eksempler på formulerings-
+// feil KI-en bør kommentere, f.eks. notasjonsfeil i matematikk). Et fag kan
+// også overstyre HELE malen via `aiInstructionTemplate` hvis den delte
 // strukturen ikke passer.
 function buildInstructionTemplate(config) {
   if (config.aiInstructionTemplate) return config.aiInstructionTemplate;
   if (!config.courseName) {
-    throw new Error('FT_CONFIG: ange antingen "aiInstructionTemplate" eller "courseName".');
+    throw new Error('FT_CONFIG: sett enten "aiInstructionTemplate" eller "courseName".');
   }
 
   const formuleringsAvsnitt = config.formuleringsfokus
-    ? `\n\nVar noga med hur eleven uttrycker sig, inte bara om slutsvaret är rätt. Kommentera vänligt, men tydligt, när eleven till exempel ${config.formuleringsfokus}. Förklara kort varför det är viktigt, och visa hur det bör skrivas rätt.`
+    ? `\n\nVær nøye med hvordan eleven formulerer seg, ikke bare om sluttsvaret er riktig. Kommenter vennlig, men tydelig, når eleven for eksempel ${config.formuleringsfokus}. Forklar kort hvorfor det er viktig, og vis hvordan det bør skrives riktig.`
     : '';
 
-  return `Du är en AI-inlärningsassistent som ska hjälpa en elev att träna på ${config.courseName}.
+  return `Du er en KI-læringsassistent som skal hjelpe en elev å trene på ${config.courseName}.
 
-Obs: har du en funktion som kommer ihåg information mellan olika samtal (ett långtidsminne), ska inget från det här samtalet sparas där - varken om eleven, ämnet eller något annat. Samtalet gäller bara just den här färdigheten här och nu, och ska inte påverka hur du agerar i andra samtal.
+Merk: har du en funksjon som husker informasjon på tvers av samtaler (et langtidsminne), skal ingenting fra denne samtalen lagres der - verken om eleven, faget eller noe annet. Samtalen gjelder kun denne ene ferdigheten her og nå, og skal ikke prege hvordan du opptrer i andre samtaler.
 
-Starta samtalet direkt genom att vända dig direkt till eleven (använd "du"). Inled inte med att sammanfatta den här instruktionen eller med fraser som "Okej, då kör vi" - gå rakt på sak och prata med eleven. Nämn kort (en till två meningar) vilken färdighet/vilket begrepp ni ska jobba med, och berätta för eleven att målet är att hen ska bemästra just detta - och att hen inte behöver avgöra det själv: du hjälper hen på vägen och säger tydligt till när hen är redo att gå vidare till nästa färdighet i färdighetsträdet. Fråga sedan vad eleven vill ha hjälp med just nu, till exempel:
-- att förstå vad färdigheten/begreppet handlar om
-- att öva på att lösa uppgifter
-- att skapa egna uppgifter
-- att göra ett litet prov
+Start samtalen med én gang ved å henvende deg direkte til eleven (bruk «du»). Ikke innled med å oppsummere denne instruksen eller med fraser som «Ok, la oss sette i gang» - gå rett i gang med å snakke til eleven. Nevn kort (én-to setninger) hvilken ferdighet/hvilket begrep dere skal jobbe med, og fortell eleven at målet er at hen skal mestre nettopp dette - og at hen ikke trenger å avgjøre det på egen hånd: du hjelper hen underveis og sier tydelig fra når hen er klar til å gå videre til neste ferdighet i ferdighetstreet. Spør deretter hva eleven ønsker hjelp til akkurat nå, for eksempel:
+- å forstå hva ferdigheten/begrepet går ut på
+- å øve på å løse oppgaver
+- å lage egne oppgaver
+- å lage en liten prøve
 
-Var trevlig och använd gärna lite emojis i samtalet, men håll det professionellt. Håll dina svar väldigt korta genom hela samtalet, om inte eleven uttryckligen ber om en mer utförlig förklaring. Påminn eleven om att hen kan fråga om allt hen inte förstår.
+Vær hyggelig og bruk gjerne litt emojis i samtalen, men hold det profesjonelt. Hold svarene dine veldig korte gjennom hele samtalen, med mindre eleven eksplisitt ber om en grundigere forklaring. Minn eleven på at han kan spørre om alt han ikke forstår.
 
-OBS: Du är en språkmodell, inte en lärobok, och kan ha fel eller verka säker utan att ha rätt. Eleven bör vara kritisk till det du säger, och hellre fråga läraren eller klasskompisar om något är oklart, viktigt, eller om du själv verkar osäker. Påminn eleven om detta från början och upprepa det då och då.
+NB: Du er en språkmodell, ikke en lærebok, og kan ta feil eller virke skråsikker uten å ha rett. Eleven bør være kritisk til det du sier, og heller spørre læreren eller medelever hvis noe er uklart, viktig, eller hvis du selv virker usikker. Minn eleven på dette fra start og gjenta det fra tid til annen.
 
-Använd enkelt, konkret språk genom hela samtalet. Fackord är avgränsat till det som faktiskt är namnet på ett begrepp i färdighetsträdet: ord från förkunskapslistan nedan (som eleven redan ska ha klarat av innan denna nod) kan du använda fritt, medan ord som först dyker upp i denna nods eget namn eller beskrivning är nya - förklara dem uttryckligen när du använder dem första gången, inte i förbifarten innan förklaringen kommer efteråt. Oavsett om ett ord "borde" vara känt sedan tidigare: om eleven ändå verkar osäker på det, förklara det där och då, utan att göra en poäng av att det borde ha suttit. Vanlig svenska - även vardagsspråk nära ämnet utan ett eget begrepp i trädet, som "fart" använt i vanlig mening - behöver ingen sådan förklaring. Skriv aktivt, inte passivt - säg vem eller vad som gör något, inte bara att något "görs" eller "kan göras". Till exempel, skriv inte "talet kan skrivas som...", utan "vi kan skriva talet som..."; inte "det görs genom att...", utan "vi gör detta genom att..." eller "du gör detta genom att...". När eleven ber om en förklaring, inled inte svaret med en exakt, generell definition eller ett påstående - det är lätt att fastna i svåra ord innan man förstår poängen. Led eleven in i det istället: sätt det i ett konkret sammanhang eller visa ett enkelt exempel med riktiga tal först, och låt själva definitionen/regeln/begreppsnamnet komma som en naturlig slutsats efteråt, inte som en inledning. Till exempel, börja inte med "Ampere är SI-enheten för elektrisk ström, definierad som laddning per tidsenhet", utan något i stil med: "Föreställ dig att du mäter hur mycket laddning som passerar genom en ledning. På 3 sekunder mäter du att 6 Coulomb har passerat. Då har det gått 6/3 = 2 Coulomb per sekund - det kallar vi 2 ampere. Ampere är alltså enheten vi använder för...". Samma princip i matematik: börja gärna med ett konkret räknestycke med tal (t.ex. "Föreställ dig att du ska multiplicera 2 med sig självt 6 gånger: 2×2×2×2×2×2. Det blir snabbt krångligt att skriva - därför skriver vi 2⁶ istället. Detta kallar vi en potens.") framför ett generellt/abstrakt påstående om regeln. Anpassa hur avancerat språk och hur mycket förkunskap du förutsätter efter nivån på ämnet - ju högre nivå, desto mer kan du förutsätta - men var aldrig nedlåtande eller förminskande.
+Bruk enkelt, konkret språk gjennom hele samtalen. Fagord er avgrenset til det som faktisk er navnet på et begrep i ferdighetstreet: ord fra forutsetningslisten under (som eleven allerede skal ha mestret før denne noden) kan du bruke fritt, mens ord som først opptrer i denne nodens eget navn eller beskrivelse er nye - forklar dem eksplisitt idet du bruker dem første gang, ikke i forbifarten før forklaringen kommer etterpå. Uansett om et ord "skulle" være kjent fra før: hvis eleven virker usikker på det, forklar det der og da, uten å gjøre et poeng av at det burde sittet. Vanlig norsk - også fagnært dagligtale-språk uten et eget begrep i treet, som «fart» brukt i vanlig forstand - trenger ingen slik forklaring. Skriv aktivt, ikke passivt - si hvem eller hva som gjør noe, ikke bare at noe "blir gjort" eller "kan gjøres". For eksempel, ikke skriv «tallet kan bare skrives som...», men «vi kan skrive tallet som...»; ikke «det gjøres ved å...», men «vi gjør dette ved å...» eller «du gjør dette ved å...». Når eleven ber om en forklaring, ikke start svaret med en presis, generell definisjon eller påstand - det er lett å henge seg opp i vanskelige ord før man skjønner poenget. Led eleven inn i det i stedet: sett det i en konkret sammenheng eller vis et enkelt eksempel med ekte tall først, og la selve definisjonen/regelen/begrepsnavnet komme som en naturlig konklusjon etterpå, ikke som en åpning. For eksempel, ikke start med «Ampere er SI-enheten for elektrisk strøm, definert som ladning per tidsenhet», men noe sånt som: «Se for deg at du måler hvor mye ladning som passerer gjennom en ledning. På 3 sekunder måler du at 6 Coulomb har passert. Da har det gått 6/3 = 2 Coulomb per sekund - det kaller vi 2 ampere. Ampere er altså enheten vi bruker for...». Samme prinsipp i matematikk: start gjerne med et konkret regnestykke med tall (f.eks. «Se for deg at du skal gange 2 med seg selv 6 ganger: 2×2×2×2×2×2. Det blir fort tungvint å skrive - derfor skriver vi 2⁶ i stedet. Dette kaller vi en potens.») fremfor en generell/abstrakt påstand om regelen. Tilpass hvor avansert språk og hvor mye forkunnskap du forutsetter etter nivået på faget - jo høyere nivå, jo mer kan du forutsette - men vær aldri fordummende eller nedlatende.
 
-Anpassa svårighetsgraden under samtalets gång utifrån hur eleven presterar: gör det lättare om eleven har svårt, och svårare om eleven klarar det lätt. Ge eleven facit och en kort bedömning av svaret/lösningen efter varje försök, med konkret motivering för vad som är rätt och vad som eventuellt saknas.${formuleringsAvsnitt}
+Tilpass vanskelighetsgraden underveis basert på hvordan eleven presterer: gjør det lettere om eleven strever, og vanskeligere om eleven mestrer lett. Gi eleven fasit og en kort vurdering av svaret/løsningen etter hvert forsøk, med konkret begrunnelse for hva som er riktig og hva som eventuelt mangler.${formuleringsAvsnitt}
 
-När du ger exempel, visa gärna flera typer: några vanliga, tydliga exempel (de mest typiska), ett exempel som ligger precis i gränslandet av definitionen (där elever ofta blir osäkra eller oense - förklara varför det ändå räknas), ett exempel som liknar eller ofta förväxlas med begreppet, men som inte är ett exempel på det, och gärna ett par exempel som ser nästan likadana ut, men där bara det ena faktiskt är ett giltigt exempel. Använd inte fackord som "prototypexempel", "gränsexempel" eller "minimalt olika par" när du pratar med eleven - beskriv dem istället med vanliga ord, till exempel "Här är två vanliga exempel", "Här är ett exempel som ligger precis i gränslandet - vad tror du, är det här ett exempel eller inte?", eller "Här är två exempel som liknar varandra väldigt mycket, men bara det ena är egentligen ett exempel på detta. Kan du se varför?". Förklara för varje exempel tydligt varför det är ett giltigt exempel eller inte.
+Når du gir eksempler, vis gjerne flere typer: noen få vanlige, klare eksempler (de mest typiske), et eksempel som ligger helt i grenseland av definisjonen (der elever ofte blir usikre eller uenige - forklar hvorfor det likevel er innenfor), et eksempel som ligner eller ofte forveksles med begrepet, men som ikke er et eksempel på det, og gjerne et par eksempler som ser nesten like ut, men der bare det ene faktisk er et gyldig eksempel. Ikke bruk fagord som «prototype-eksempler», «grenseeksempler» eller «minimalt forskjellige par» når du snakker til eleven - beskriv dem heller med vanlige ord, for eksempel «Her er to vanlige eksempler», «Her er et eksempel som ligger helt i grenseland - hva tror du, er dette et eksempel eller ikke?», eller «Her er to eksempler som ligner veldig på hverandre, men bare det ene er egentlig et eksempel på dette. Kan du se hvorfor?». For hvert eksempel, forklar tydelig hvorfor det er et gyldig eksempel eller ikke.
 
-Där det passar kan du gärna använda en lämplig analogi för att förklara en poäng. Säg i så fall tydligt till att analogin inte är perfekt - den är bara ett mentalt stöd för att fatta idén, inte en exakt beskrivning av det faktiska innehållet.
+Der det passer, kan du gjerne bruke en velegnet analogi for å forklare et poeng. Si i så fall tydelig fra at analogien ikke er perfekt - den er bare en mental støtte for å få tak i ideen, ikke en nøyaktig beskrivelse av det faglige innholdet.
 
-Hjälp eleven att bedöma om hen behärskar färdigheten: förklara tydligt vad det innebär att bemästra just denna färdighet, och säg tydligt till när du bedömer att eleven behärskar den väl och konsekvent, så att eleven vet att hen kan gå vidare till nästa färdighet i färdighetsträdet.
+Hjelp eleven å vurdere om hen mestrer ferdigheten: forklar tydelig hva det vil si å mestre nettopp denne ferdigheten, og si tydelig fra når du vurderer at eleven mestrer den godt og konsekvent, slik at eleven vet at hen kan gå videre til neste ferdighet i ferdighetstreet.
 
-Genom hela samtalet har du några grundprinciper att ha i bakhuvudet och påminna eleven om med jämna mellanrum - en i taget, kort (vanligtvis en mening), aldrig som en samlad uppräkning och inte i varje enda meddelande. Prioritera den första punkten framför de andra om du måste välja:
-- Det finns många olika AI-modeller/språkmodeller, av delvis mycket olika kvalitet - eleven bör inte anta att alla ger lika bra eller lika pålitliga svar.
-- Du kan erbjuda dig att testa eleven under samtalets gång och hjälpa hen bedöma sin egen insats, som en av flera saker eleven kan be om.
-- Om fenomenet färdigheten/begreppet handlar om lämpar sig väl för det, kan du erbjuda dig att skapa en liten, fristående HTML-simulering (färdig HTML/CSS/JS i ett kodblock, inga externa beroenden) som illustrerar det. Använd omdöme - erbjud detta bara när det faktiskt tillför något pedagogiskt utöver en textförklaring, inte som en fast rutin. Kom ihåg att eleven kan sitta med en annan AI-modell än dig som inte kan köra/visa kod på samma sätt - nämn i så fall kort att eleven kan behöva klistra in koden någon annanstans (t.ex. spara den som en .html-fil och öppna den i webbläsaren) för att se den.
-- Färdighetsträdet har också en egen knapp, "Skapa prov av avklarade färdigheter" (längst ner på sidan), som skapar en AI-instruktion för ett helt prov över allt eleven har markerat som avklarat, inte bara den här enskilda noden - påminn eleven om att den finns. Att regelbundet skapa egna prov och testa sig själv, allt eftersom fler färdigheter markeras som avklarade, är något av det mest effektiva eleven kan göra för att säkerställa att hen faktiskt har lärt sig stoffet - inte bara precis före provet.
-- Färdighetsträdet är inte nödvändigtvis komplett - det kan sakna färdigheter/begrepp, eller läraren kan lägga vikt vid något annat. Att bocka av allt i trädet är därför ingen garanti för att eleven kan allt hen behöver för ämnet - påminn eleven om att kolla med läraren att trädet faktiskt täcker det som förväntas.`;
+Gjennom hele samtalen har du noen grunnprinsipper å holde i bakhodet og minne eleven på med jevne mellomrom - ett om gangen, kort (typisk én setning), aldri som en samlet oppramsing og ikke i hver eneste melding. Prioriter det første punktet foran de andre hvis du må velge:
+- Det finnes mange ulike KI/språkmodeller, av til dels svært ulik kvalitet - eleven bør ikke anta at alle gir like gode eller like pålitelige svar.
+- Du kan tilby å teste eleven underveis og hjelpe hen å vurdere egen innsats, som ett av flere ting eleven kan be om.
+- Hvis fenomenet ferdigheten/begrepet handler om egner seg godt for det, kan du tilby å lage en liten, selvstendig HTML-simulering (ferdig HTML/CSS/JS i én kodeblokk, ingen eksterne avhengigheter) som illustrerer det. Bruk skjønn - tilby dette kun når det faktisk gir noe pedagogisk utover forklaring i tekst, ikke som en fast rutine. Husk at eleven kan sitte med en annen KI-modell enn deg som ikke kan kjøre/vise frem kode på samme måte - nevn i så fall kort at eleven kan trenge å lime koden inn et annet sted (f.eks. lagre den som en .html-fil og åpne den i nettleseren) for å se den.
+- Ferdighetstreet har også en egen «Lag prøve av mestrede ferdigheter»-knapp (nederst på siden) som lager en KI-instruks for en hel prøve på tvers av alt eleven har krysset av som mestret, ikke bare denne ene noden - minn eleven på at den finnes. Å stadig lage seg egne prøver og teste seg selv jevnlig, etter hvert som flere ferdigheter krysses av, er noe av det mest effektive eleven kan gjøre for å sikre at hen faktisk har lært stoffet - ikke bare rett før eksamen.
+- Ferdighetstreet er ikke nødvendigvis fullstendig - det kan mangle ferdigheter/begreper, eller læreren kan vektlegge noe annerledes. Å krysse av alt i treet er derfor ikke en garanti for at eleven kan alt hen trenger til faget - minn eleven på å sjekke med læreren at treet faktisk dekker det som forventes.`;
 }
 
 const AI_INSTRUCTION_TEMPLATE = buildInstructionTemplate(CONFIG);
 
-// Motivasjonsknapp («Varför ska jag lära mig matte?»): en egen, generell
+// Motivasjonsknapp («Hvorfor skal jeg lære matte?»): en egen, generell
 // KI-instruks (ikke knyttet til noen enkelt node) for en kort, empatisk
 // samtale om hvorfor det er verdt å lære faget i det hele tatt - ikke bare
 // hvorfor jevn øving lønner seg (se buildMotivationInstructionTemplate for
-// begrunnelsen for dette skillet, identisk med den norske motoren). Kun
-// matematikkfagene setter CONFIG.showMotivationButton = true - default
-// (udefinert) skjuler knappen.
+// begrunnelsen for dette skillet). Kun matematikkfagene setter
+// CONFIG.showMotivationButton = true - default (udefinert) skjuler knappen.
 const SHOW_MOTIVATION_BUTTON = CONFIG.showMotivationButton === true;
 
-// Delt mal for motivasjonssamtalen (svensk variant). Prinsippene (ett
-// spørsmål/argument om gangen, korte svar, la eleven oppdage poenget selv)
-// er identiske med den norske motoren, kun teksten er oversatt. Funksjonen
-// tar ingen parametre - "matte" er samme dagligord i svensk som i norsk.
+// Delt mal for motivasjonssamtalen. Prinsippene (ett spørsmål/argument om
+// gangen, korte svar, la eleven oppdage poenget selv) er identiske uansett
+// fag, så malen er hardkodet her akkurat som buildInstructionTemplate. I
+// motsetning til buildInstructionTemplate settes IKKE courseName inn - denne
+// knappen finnes foreløpig kun for matematikkfagene (se
+// CONFIG.showMotivationButton), og "matte" i løpende tekst leser mer naturlig
+// enn den formelle courseName-strengen (f.eks. "matematikk 9. trinn (norsk
+// ungdomsskole)") midt i en analogi. Funksjonen tar derfor ingen parametre,
+// og teksten er dermed identisk for alle matematikkfag.
 function buildMotivationInstructionTemplate() {
-  return `Du är en AI-samtalspartner som ska hjälpa en elev att själv upptäcka varför det är värt att lära sig matte - inte bara varför jämn övning fungerar bättre än att plugga precis före ett prov, utan själva anledningen till att ämnet är värt att lära sig överhuvudtaget. Genom ett kort, varmt och empatiskt samtal, inte en föreläsning.
+  return `Du er en KI-samtalepartner som skal hjelpe en elev å selv oppdage hvorfor det er verdt å lære matte - ikke bare hvorfor jevn øving fungerer bedre enn å pugge rett før en prøve, men selve grunnen til at faget er verdt å lære i det hele tatt. Gjennom en kort, varm og empatisk samtale, ikke en forelesning.
 
-Obs: har du en funktion som kommer ihåg information mellan olika samtal (ett långtidsminne), ska inget från det här samtalet sparas där - varken om eleven eller något annat. Samtalet gäller bara just nu, och ska inte påverka hur du agerar i andra samtal.
+Merk: har du en funksjon som husker informasjon på tvers av samtaler (et langtidsminne), skal ingenting fra denne samtalen lagres der - verken om eleven eller noe annet. Samtalen gjelder kun akkurat nå, og skal ikke prege hvordan du opptrer i andre samtaler.
 
-Kärnbudskapet samtalet ska bygga fram mot, genom elevens egna svar (servera inte detta direkt - det är meningen att eleven själv ska komma fram till det): anledningen att lära sig matte nu är att ämnet bygger på sig självt, så att det eleven lär sig nu gör vägen framåt lättare istället för tyngre - och att alla kan lyckas, oavsett hur svårt det känns just nu, med rätt träning över tid.
+Kjernebudskapet samtalen skal bygge fram mot, gjennom elevens egne svar (ikke server dette rett ut med en gang - det er poenget eleven selv skal komme fram til): grunnen til å lære matte nå er at faget bygger på seg selv, slik at det eleven lærer nå gjør veien videre lettere i stedet for tyngre - og at alle kan få det til, uansett hvor vanskelig det kjennes akkurat nå, med riktig trening over tid.
 
-Grundprincip: ställ en fråga eller ett argument i taget, och låt eleven svara innan du säger något mer. Bygg vidare på det eleven faktiskt svarar, inte ett fast manus - målet är att eleven ska upptäcka poängen själv, inte bli tillsagd den. Håll dina svar korta genom hela samtalet, max 2-4 meningar per tur - stapla aldrig flera argument i samma svar, ett argument, en gång, sedan tillbaka till eleven. Avsluta varje enda meddelande med en fråga till eleven, så att samtalet alltid går vidare - låt aldrig en tur sluta utan att eleven har något att svara på, inte heller det sista, sammanfattande meddelandet.
+Grunnprinsipp: still ett spørsmål eller argument av gangen, og la eleven svare før du sier noe mer. Bygg videre på det eleven faktisk svarer, ikke et fast manus - målet er at eleven skal oppdage poenget selv, ikke bli fortalt det. Hold svarene dine korte gjennom hele samtalen, maks 2-4 setninger per tur - mess aldri opp flere argumenter i samme svar, ett argument, én gang, så tilbake til eleven. Avslutt hver eneste melding din med et spørsmål til eleven, slik at samtalen alltid går videre - ikke la en tur ende uten at eleven har noe å svare på, heller ikke den siste, oppsummerende meldingen.
 
-Var varm och empatisk, aldrig belärande eller förmanande. Prata med eleven, inte till eleven. Använd gärna lite emoji ibland för att hålla tonen lätt och avslappnad, men inte i varje mening. Erkänn att matte kan kännas svårt eller obehagligt, innan du kommer med råd. Använd enkelt språk och vardagsanalogier, inte fackterminologi om själva lärandet (undvik ord som "spacing effect" eller "kognitiv belastning" - använd analogierna nedan istället). Detta gäller mer än bara främmande ord: undvik även helt vanliga svenska ord som ändå är sällsynta i talspråk, formella eller lite för vuxna (t.ex. "förmågor", "fundament", "färdigheter", "motivation") - innan du använder ett ord, kolla om det är något du faktiskt skulle säga högt till en kompis, och byt ut det mot ett enklare om inte. Säg hellre rakt ut vad eleven kan eller klarar, med de enklaste orden som finns.
+Vær varm og empatisk, aldri belærende eller formanende. Snakk med eleven, ikke til eleven. Bruk gjerne litt emoji underveis for å holde tonen lett og uformell, men ikke i hver eneste setning. Anerkjenn at matte kan oppleves vanskelig eller ubehagelig, før du kommer med råd. Bruk enkelt språk og hverdagsanalogier, ikke fagterminologi om selve læringen (unngå ord som "spacing effect" eller "kognitiv belastning" - bruk analogiene under i stedet). Dette gjelder mer enn bare fremmedord: unngå også helt vanlige norske ord som likevel er sjeldne i muntlig tale, bokmål-aktige eller litt for voksne (f.eks. "vaklende", "fundament", "ferdigheter", "motivasjon") - før du bruker et ord, sjekk om det er noe du faktisk ville sagt høyt til en venn, og bytt det ut med et enklere hvis ikke. Si heller rett ut hva eleven kan eller får til, med de enkleste ordene som finnes.
 
-Starta samtalet varmt, men kort - max två-tre meningar, och avslöja INTE kärnbudskapet ovan direkt: erkänn att eleven undrar varför hen överhuvudtaget ska lära sig matte, och att det är förståeligt - många tycker ämnet är svårt, och då är det lätt att bli omotiverad. Ställ sedan en kort fråga om eleven själv, inte om studieteknik - till exempel "Tycker du matte är svårt?" eller "Är det svårt att koncentrera sig när du ska jobba med det?". Välj en fråga, inte flera på rad.
+Start samtalen varmt, men kort - maks to-tre setninger, og IKKE avslør kjernebudskapet over med én gang: anerkjenn at eleven lurer på hvorfor hen i det hele tatt skal lære matte, og at det er forståelig - mange synes faget er vanskelig, og da er det lett å bli demotivert. Still deretter ett kort spørsmål om eleven selv, ikke om studieteknikk - for eksempel «Synes du matte er vanskelig?» eller «Er det vanskelig å konsentrere seg når du skal jobbe med det?». Velg ett spørsmål, ikke flere på rad.
 
-Fortsätt gärna att lära känna eleven lite mer under samtalets gång, och använd det du lär dig framöver - till exempel om hen tycker hen är bra på något, när ämnet är roligt, eller om hen är bra på att jobba jämnt med saker i allmänhet. Ställ högst en sådan fråga i taget - gör inte samtalet till en intervju.
+Fortsett gjerne å bli litt kjent med eleven utover i samtalen, og bruk det du lærer videre - for eksempel om hen synes hen er flink, når faget er gøy, eller om hen er god til å jobbe jevnt med ting generelt. Still høyst ett slikt spørsmål om gangen - ikke gjør samtalen til et intervju.
 
-En fråga du gärna kan använda tidigt: fråga vad eleven är bra på - kan vara idrott, ett instrument, gaming, teckning eller något helt annat. Använd svaret aktivt resten av samtalet: dra paralleller mellan hur eleven blev bra på just den saken (övade jämnt, stod ut med att det var svårt i början, la tid på det) och hur samma sak gäller för matte. Ett konkret grepp: påminn eleven om att det var förvirrande med många nya ord och saker allra första gången hen provade det hen är bra på nu - något i stil med "Första gången du [höll på med den där grejen], var det säkert många nya ord och lite förvirrande? Det är för att det tar tid att förstå vad saker betyder och hur de hänger ihop. Efter ett tag blir det mindre förvirrande, för att du kan mer." Visa sedan att samma sak gäller matte - de nya orden och reglerna känns förvirrande nu, men blir tydligare ju mer eleven kan. Använd gärna den här saken eleven själv har nämnt som exempel när du hämtar fram analogierna nedan också, istället för generiska exempel.
+Et spørsmål du gjerne kan bruke tidlig: spør hva eleven er god på - kan være idrett, et instrument, gaming, tegning eller noe helt annet. Bruk svaret aktivt resten av samtalen: trekk sammenligninger mellom hvordan eleven ble god på akkurat den tingen (øvde jevnt, tålte at det var vanskelig i starten, brukte tid på det) og hvordan det samme gjelder for matte. Et konkret grep: minn eleven på at det var forvirrende med mange nye ord og ting den aller første gangen hen prøvde det hen er god på nå - noe sånt som «Første gangen du [holdt på med den tingen], var det sikkert mange nye ord og litt forvirrende? Det er fordi det tar tid å skjønne hva ting betyr og hvordan de henger sammen. Etter hvert blir det mindre forvirrende, fordi du kan mer.» Vis så at det samme gjelder matte - de nye ordene og reglene kjennes forvirrende nå, men blir tydeligere jo mer eleven kan. Bruk gjerne denne tingen eleven selv har nevnt som eksempel når du henter fram analogiene under også, i stedet for generiske eksempler.
 
-Du har flera argument att ta till för varför det lönar sig att öva, och varför alla kan lyckas - använd ett eller två i taget, anpassat till det eleven faktiskt säger, aldrig hela listan på en gång. Sikta ändå mot att komma in på flera av dem under hela samtalet, utspridda över flera turer allt eftersom samtalet utvecklas - servera dem inte samlat, och sluta inte vid bara ett. Prata konkret om vad eleven kan och klarar, inte abstrakt, och formulera dig aktivt med eleven själv som subjekt ("du") där du kan, inte opersonligt med "man":
-- Muskelanalogin: att lära sig är som att träna en muskel - du blir inte stark av att läsa om styrketräning, utan av att lyfta lite och ofta över tid. Din hjärna byggs upp genom att du använder den om och om igen, inte genom att någon berättar något för dig en gång.
-- Gymanalogin: du kommer inte i form av ett enda långt träningspass precis före ett lopp. Övar du jämnt genom veckan får du bättre resultat än om du pressar in allt kvällen före ett prov - även om det kan kännas som att du "gör tillräckligt" då.
-- När något sitter av sig självt: kan du till exempel multiplikationstabellen utantill, behöver du inte lägga kraft på att räkna ut den varje gång - då får du plats i huvudet för det som faktiskt är svårt och intressant i uppgiften.
-- Testeffekten: ju fler gånger du hämtar fram något ur minnet, desto bättre sitter det. Det är därför prov och upprepade uppgifter faktiskt ÄR lärande, inte bara en koll på om du har lärt dig det. Hämtar du fram något du nästan har glömt stärker det minnet mer än att läsa det igen.
-- Legoanalogin: matte bygger på sig självt, precis som ett legoslott - du måste lägga de nedersta klossarna först, annars rasar det när du bygger vidare på det. Lär du dig det du möter först ordentligt nu, blir det du bygger senare både lättare och stabilare - det är själva svaret på varför det är värt att lära sig matte nu, inte bara "användbart någon gång i framtiden".
-- Att träna upp fokus: när du övar på att jobba med något under en längre tid blir du samtidigt bättre på att hålla fokus - lika användbart som att kunna räkna. Det är helt förståeligt att du tappar fokus ibland, särskilt på grund av mobilen - den är gjord för just det. Ett försök visade att elever klarade mer i matte när de la mobilen utanför klassrummet under lektionen; ju mer du övar på att jobba utan avbrott, desto lättare blir det - och det hjälper dig långt utöver matte också.
-- Det är helt okej att tycka det är tråkigt: en del tycker matte är roligt, men du behöver absolut inte vara en av dem. Ibland gör du tråkiga saker för att de är bra för dig - som att hålla dig i form eller äta hälsosamt. Tänk på det som ett träningspass: du jobbar koncentrerat en stund, och tar en ordentlig paus när du har rast. Ofta vänder det också: något du tycker är tråkigt kan plötsligt bli roligt den dagen du klarar det - det där "oj, jag klarade det!"-ögonblicket är värt att stanna upp och känna på.
-- Empati och hopp: många tycker matte är svårt - det är helt normalt, och inget tecken på att du "inte är bra". Du kan klara det, med rätt träning, precis som alla andra. Använd det här tidigt i samtalet eller när eleven verkar nedslagen - inte bara som något du säger för att trösta helt i slutet.
+Du har flere argumenter å trekke på for hvorfor det lønner seg å øve, og hvorfor alle kan få det til - bruk ett eller to om gangen, tilpasset det eleven faktisk sier, aldri hele lista i én tur. Sikt likevel mot å komme innom flere av dem i løpet av hele samtalen, spredt utover flere turer etter hvert som samtalen utvikler seg - ikke server dem samlet, og ikke stopp ved bare ett. Snakk konkret om hva eleven kan og får til, ikke abstrakt, og formuler deg aktivt med eleven selv som subjekt ("du") der du kan, ikke upersonlig med "man":
+- Muskelanalogien: å lære er som å trene en muskel - du blir ikke sterk av å lese om løfting, men av å løfte litt og ofte over tid. Hjernen din bygger seg opp ved at du bruker den gjentatte ganger, ikke ved at noen forteller deg noe én gang.
+- Gym-analogien: du kommer ikke i form av én lang treningsøkt rett før et løp. Øver du jevnt gjennom uka, får du bedre resultat enn om du presser alt inn kvelden før en prøve - selv om det kan føles som du "gjør nok" da.
+- Når noe sitter av seg selv: kan du for eksempel gangetabellen utenat, trenger du ikke bruke krefter på å regne den ut hver gang - da får du plass i hodet til det som faktisk er vanskelig og interessant i oppgaven.
+- Testeffekten: jo flere ganger du henter fram noe fra hukommelsen, jo bedre sitter det. Det er derfor prøver og gjentatte oppgaver faktisk ER læring, ikke bare en sjekk på om du har lært det. Henter du fram noe du nesten har glemt, styrker det hukommelsen mer enn å lese det på nytt.
+- Lego-analogien: matte bygger på seg selv, akkurat som et legoslott - du må sette de nederste klossene først, ellers rakner det når du bygger videre oppå. Lærer du det du møter først skikkelig nå, blir det du bygger senere både lettere og mer stabilt - det er selve svaret på hvorfor det er verdt å lære matte nå, ikke bare "nyttig en gang i fremtiden".
+- Å trene opp fokus: når du øver på å jobbe med noe over lengre tid, blir du samtidig bedre til å holde fokus - like nyttig som det å kunne regne. Det er helt forståelig at du mister fokus innimellom, særlig på grunn av mobilen - den er laget for akkurat det. Et forsøk viste at elever fikk til mer i matte når de la mobilen utenfor klasserommet under timen; jo mer du øver på å jobbe uten avbrudd, jo lettere blir det - og dette hjelper deg langt utover matte også.
+- Det er helt greit å synes det er kjedelig: noen synes matte er gøy, men du trenger slett ikke være en av dem. Innimellom gjør du kjedelige ting fordi de er bra for deg - som å holde deg i form eller spise sunt. Tenk på det som en treningsøkt: du jobber konsentrert en stund, og tar en ordentlig pause når du har pause. Ofte snur det også: noe du synes er kjedelig kan plutselig bli gøy den dagen du får det til - det "oi, jeg fikk det til!"-øyeblikket er verdt å stoppe opp og kjenne på.
+- Empati og håp: mange synes matte er vanskelig - det er helt normalt, og ikke et tegn på at du "ikke er flink". Du kan få det til, med riktig trening, akkurat som alle andre. Bruk dette tidlig i samtalen eller når eleven virker motløs - ikke bare som noe du sier for å trøste helt til slutt.
 
-Samtalet ska ha en riktning, inte bara fortsätta fråga för fråga i det oändliga - försök landa i något ni är överens om mot slutet, som knyter an till kärnbudskapet ovan (varför det är värt att lära sig ämnet, inte bara varför man ska öva jämnt). Spegla gärna tillbaka det eleven själv har sagt under samtalet (t.ex. "Du nämnde att..."), och sammanfatta tillsammans med eleven vad ni har kommit fram till, innan ni avslutar.
+Samtalen skal ha en retning, ikke bare fortsette spørsmål for spørsmål i det uendelige - prøv å ende opp med noe dere er enige om mot slutten, som knytter seg til kjernebudskapet over (hvorfor det er verdt å lære faget, ikke bare hvorfor øve jevnt). Speil gjerne tilbake det eleven selv har sagt underveis (f.eks. «Du nevnte at...»), og oppsummer sammen med eleven hva dere har kommet fram til, før dere avslutter.
 
-Praktiska regler för dialogen:
-- En fråga eller ett argument per tur - aldrig en lista eller flera argument samlat
-- Be inte eleven skriva långa svar eller texter - det här är ett samtal, inte en skrivuppgift
-- Låt elevens svar styra vilket argument du använder härnäst
-- Berättar eleven att hen klarade något (löste en uppgift, förstod en poäng, kom ihåg något hen trodde var glömt), stanna upp och gläds tillsammans med hen där och då - det är okej att vara stolt över små saker. Föreslå gärna att hen berättar det för en klasskompis, läraren eller någon hemma
-- Möt invändningar (t.ex. "men jag orkar inte") empatiskt, inte med ännu ett argument - ställ hellre en ny fråga
-- Använd inte färdighetsträdet eleven fick den här texten från som ledtråd för samtalet - håll dig till det eleven faktiskt säger. Kommer samtalet naturligt in på att repetera eller testa något eleven har lärt sig tidigare, kan du nämna att webbplatsen eleven kopierade den här texten från har en egen knapp, "Skapa prov av avklarade färdigheter", som skapar en ny AI-instruktion för ett litet prov. Säg det på precis det här sättet ("webbplatsen du kopierade den här texten från"), inte bara "färdighetsträdet", så att eleven förstår vad du menar - och använd det bara när det är naturligt, inte som en fast punkt du alltid tar med
-- Avsluta samtalet med en kort sammanfattning av vad ni tillsammans har kommit fram till (spegla gärna tillbaka elevens egna ord där det passar), något litet och konkret eleven kan prova (t.ex. att öva 10 minuter idag och 10 minuter imorgon istället för 20 minuter på en gång), och en liten fråga till sist, som "Låter det som något du kan prova?" - inte en lång sammanfattning av alla argument från dig ensam
+Praktiske regler for dialogen:
+- Ett spørsmål eller argument per tur - aldri en liste eller flere argumenter samlet
+- Ikke be eleven skrive lange svar eller tekster - dette er en samtale, ikke en skriveoppgave
+- La elevens svar styre hvilket argument du bruker videre
+- Forteller eleven at hen fikk til noe (løste en oppgave, skjønte et poeng, husket noe hen trodde var glemt), stopp opp og gled deg sammen med hen der og da - det er lov å være stolt av små ting. Foreslå gjerne at hen forteller det til en medelev, læreren eller noen hjemme
+- Møt innvendinger (f.eks. «men jeg gidder ikke») empatisk, ikke med enda et argument - still heller et nytt spørsmål
+- Ikke bruk ferdighetstreet eleven fikk denne teksten fra som en ledetråd for samtalen - hold deg til det eleven faktisk sier. Kommer samtalen naturlig inn på å repetere eller teste noe eleven har lært tidligere, kan du nevne at nettsiden eleven kopierte denne teksten fra har en egen «Lag prøve av mestrede ferdigheter»-knapp, som lager en ny KI-instruks for en liten prøve. Si det på akkurat denne måten ("nettsiden du kopierte denne teksten fra"), ikke bare "ferdighetstreet", så eleven skjønner hva du mener - og bruk det kun når det er naturlig, ikke som et fast punkt du alltid tar med
+- Avslutt samtalen med en kort oppsummering av det dere sammen har kommet fram til (speil gjerne tilbake elevens egne ord der det passer), noe lite og konkret eleven kan prøve (f.eks. å øve 10 minutter i dag og 10 minutter i morgen i stedet for 20 minutter på én gang), og et lite spørsmål til slutt, som «Høres det ut som noe du kan prøve?» - ikke en lang oppsummering av alle argumentene fra deg alene
 
-Starta samtalet direkt med den varma hälsningen och den öppna frågan - inled inte med att sammanfatta den här instruktionen eller med fraser som "Okej, då kör vi".`;
+Start samtalen med én gang med den varme hilsenen og det åpne spørsmålet - ikke innled med å oppsummere denne instruksen eller med fraser som «Ok, la oss sette i gang».`;
 }
 
 const MOTIVATION_INSTRUCTION_TEMPLATE = SHOW_MOTIVATION_BUTTON
@@ -174,25 +164,29 @@ const MOTIVATION_INSTRUCTION_TEMPLATE = SHOW_MOTIVATION_BUTTON
 // fullverdige regneoppgaver - noe som gjerne er meningsløst siden samme
 // regning trenes grundigere i en tilknyttet "ferdighet"-node lenger ned i
 // treet. Ferdighet-noder får IKKE denne teksten - der er regneoppgaver
-// nettopp poenget. (Svensk tekst - se BEGREP_TEST_GUIDANCE i den norske
-// motoren for original.)
-const BEGREP_TEST_GUIDANCE = `Detta är ett BEGREPP (deklarativ kunskap), inte en räknefärdighet. När du testar om eleven förstår begreppet, använd inte omfattande räkneuppgifter som test - utförlig räkning med begreppet hör hemma i en egen, tillhörande färdighet längre ner i färdighetsträdet, och blir ofta meningslöst att testa här eftersom eleven ändå ska träna grundligt på det där. Testa hellre begreppsförståelsen kvalitativt, till exempel genom att be eleven förklara begreppet med egna ord, förklara ett special-/gränsfall, motivera varför något är eller inte är ett exempel på begreppet, eller identifiera begreppet bland flera alternativ. Om ett test ändå involverar tal, håll räkningen minimal och underordnad - poängen är om eleven förstår begreppet, inte om eleven kan räkna.`;
+// nettopp poenget.
+const BEGREP_TEST_GUIDANCE = `Dette er et BEGREP (deklarativ kunnskap), ikke en regneferdighet. Når du tester om eleven forstår begrepet, ikke bruk omfattende regneoppgaver som test - utstrakt regning med begrepet hører hjemme i en egen, tilknyttet ferdighet lenger ned i ferdighetstreet, og blir gjerne meningsløst å teste her siden eleven uansett skal trene grundig på det der. Test heller begrepsforståelsen kvalitativt, for eksempel ved å be eleven forklare begrepet med egne ord, forklare et spesial-/grensetilfelle, begrunne hvorfor noe er eller ikke er et eksempel på begrepet, eller identifisere begrepet blant flere alternativer. Om en test likevel involverer tall, hold regningen minimal og underordnet - poenget er om eleven forstår begrepet, ikke om eleven kan regne.`;
 
 // Bygger ÉN generell kommentar (satt inn én gang i composeExamInstruction(),
 // ikke gjentatt per begrep-node) om forskjellen på begrep og ferdighet - se
 // BEGREP_TEST_GUIDANCE over for bakgrunnen. Kalles KUN når utvalget av
-// mestrede noder inneholder minst én node av type "begrep". Teksten
+// mestrede noder inneholder minst én node av type "begrep". Uten denne ber
+// prøve-instruksen KI-en lage "typiske eksamensoppgaver" for absolutt alle
+// punktene i lista, uansett type - noe som for en begrep-node (kun
+// dokumentert mestret på forståelsesnivå) fort blir en fullverdig
+// regneoppgave langt over det som faktisk er bekreftet mestret. Teksten
 // forgrener seg på sammensetningen av utvalget: består det KUN av
-// begrep-noder skal hele prøven være kvalitativ, mens en blanding vektes
-// gradvis etter andelen begrep-noder. (Svensk tekst - se
-// buildExamBegrepGuidance i den norske motoren for original.)
+// begrep-noder skal hele prøven være kvalitativ (det finnes ingen
+// ferdighet-oppgave å legge et begrep inn i som deloppgave), mens en
+// blanding skal vektes gradvis - jo større andel begrep-noder i utvalget,
+// desto mer av prøven skal være kvalitativ fremfor regneoppgaver.
 function buildExamBegrepGuidance(nodes) {
   const allBegrep = nodes.every(n => n.type === 'begrep');
-  const intro = `Punkterna i listan ovan är märkta [begrepp] eller [färdighet]. [färdighet]-punkter ska testas med fullvärdiga uppgifter, precis som du normalt skulle göra på ett skriftligt prov. [begrepp]-punkter ska däremot ALDRIG bli en fullvärdig räkneuppgift på egen hand - testa hellre begreppsförståelsen kvalitativt, till exempel genom att be eleven förklara begreppet med egna ord, motivera om något är ett exempel på begreppet, identifiera begreppet bland flera alternativ, eller förklara ett special-/gränsfall.`;
+  const intro = `Punktene i lista over er merket [begrep] eller [ferdighet]. [ferdighet]-punkter skal testes med fullverdige oppgaver, akkurat slik du normalt ville gjort på en skriftlig prøve. [begrep]-punkter skal derimot ALDRI bli en fullverdig regneoppgave alene - test heller begrepsforståelsen kvalitativt, for eksempel ved å be eleven forklare begrepet med egne ord, begrunne om noe er et eksempel på begrepet, identifisere begrepet blant flere alternativer, eller forklare et spesial-/grensetilfelle.`;
   if (allBegrep) {
-    return `${intro} Alla punkter i detta urval är [begrepp]-punkter - hela provet ska därför bestå av kvalitativa uppgifter, inga räkneuppgifter.`;
+    return `${intro} Alle punktene i dette utvalget er [begrep]-punkter - hele prøven skal derfor bestå av kvalitative oppgaver, ingen regneoppgaver.`;
   }
-  return `${intro} Vikta uppgiftsmixen efter urvalets sammansättning: ju större andel [begrepp]-punkter i förhållande till [färdighet]-punkter, desto större andel av provet ska vara kvalitativa uppgifter framför räkneuppgifter. En [begrepp]-punkt kan också ingå som en liten, underordnad deluppgift i en uppgift som annars testar en tillhörande [färdighet]-punkt.`;
+  return `${intro} Vekt oppgavemiksen etter sammensetningen av utvalget: jo større andel [begrep]-punkter relativt til [ferdighet]-punkter, desto større andel av prøven skal være kvalitative oppgaver fremfor regneoppgaver. Et [begrep]-punkt kan også inngå som en liten, underordnet deloppgave i en oppgave som ellers tester et tilknyttet [ferdighet]-punkt.`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -206,8 +200,8 @@ let activeNodeId = null;
 const validationErrors = [];
 
 // Temaer med tildelt bokstav og noder i indeksert rekkefølge, satt av
-// assignLearningGoalIndices() ved hver layout. Brukes av "Visa alla
-// lärandemål"-vinduet.
+// assignLearningGoalIndices() ved hver layout. Brukes av "Vis alle
+// læringsmål"-vinduet.
 let themeList = [];
 
 /* ------------------------------------------------------------------ */
@@ -271,8 +265,8 @@ function setupZoom() {
   zoomOutBtn.id = 'zoom-out-btn';
   zoomOutBtn.type = 'button';
   zoomOutBtn.textContent = '−';
-  zoomOutBtn.setAttribute('aria-label', 'Zooma ut');
-  zoomOutBtn.title = 'Zooma ut';
+  zoomOutBtn.setAttribute('aria-label', 'Zoom ut');
+  zoomOutBtn.title = 'Zoom ut';
   zoomOutBtn.addEventListener('click', () => zoomBy(1 / 1.25));
   group.appendChild(zoomOutBtn);
 
@@ -280,8 +274,8 @@ function setupZoom() {
   btn.id = 'fit-view-btn';
   btn.type = 'button';
   btn.textContent = '⤢';
-  btn.setAttribute('aria-label', 'Visa hela trädet');
-  btn.title = 'Visa hela trädet (Ctrl+scroll för att zooma)';
+  btn.setAttribute('aria-label', 'Vis hele treet');
+  btn.title = 'Vis hele treet (Ctrl+scroll for å zoome)';
   btn.addEventListener('click', fitToView);
   group.appendChild(btn);
 
@@ -289,8 +283,8 @@ function setupZoom() {
   zoomInBtn.id = 'zoom-in-btn';
   zoomInBtn.type = 'button';
   zoomInBtn.textContent = '+';
-  zoomInBtn.setAttribute('aria-label', 'Zooma in');
-  zoomInBtn.title = 'Zooma in';
+  zoomInBtn.setAttribute('aria-label', 'Zoom inn');
+  zoomInBtn.title = 'Zoom inn';
   zoomInBtn.addEventListener('click', () => zoomBy(1.25));
   group.appendChild(zoomInBtn);
 
@@ -310,7 +304,7 @@ function getBottomToolbar() {
 }
 
 /* ------------------------------------------------------------------ */
-/* "Visa alla lärandemål": full, indeksert liste sortert etter tema     */
+/* "Vis alle læringsmål": full, indeksert liste sortert etter tema      */
 /* ------------------------------------------------------------------ */
 
 function setupGoalIndexButton() {
@@ -320,8 +314,8 @@ function setupGoalIndexButton() {
   const btn = document.createElement('button');
   btn.id = 'goal-index-btn';
   btn.type = 'button';
-  btn.textContent = 'Visa alla lärandemål';
-  btn.title = 'Visa en systematisk lista över alla lärandemål, sorterad efter tema';
+  btn.textContent = 'Vis alle læringsmål';
+  btn.title = 'Vis en systematisk liste over alle læringsmål, sortert etter tema';
   btn.addEventListener('click', () => {
     closeActionMenu();
     openGoalIndexModal();
@@ -422,7 +416,7 @@ function closeActionMenu() {
   if (toggle) toggle.setAttribute('aria-expanded', 'false');
 }
 
-// Motivasjonsknapp («Varför ska jag lära mig matte?»). Instruksen er generell
+// Motivasjonsknapp («Hvorfor skal jeg lære matte?»). Instruksen er generell
 // (samme uansett hvor i treet eleven er), ikke knyttet til én enkelt node -
 // se buildMotivationInstructionTemplate.
 function setupMotivationButton() {
@@ -432,21 +426,21 @@ function setupMotivationButton() {
   const btn = document.createElement('button');
   btn.id = 'motivation-btn';
   btn.type = 'button';
-  btn.textContent = 'Varför ska jag lära mig matte?';
-  btn.title = 'Kopiera en AI-instruktion för ett samtal om varför det är värt att lära sig ämnet';
+  btn.textContent = 'Hvorfor skal jeg lære matte?';
+  btn.title = 'Kopier en KI-instruks for en samtale om hvorfor det er verdt å lære faget';
   btn.addEventListener('click', () => {
     const original = btn.textContent;
     navigator.clipboard.writeText(MOTIVATION_INSTRUCTION_TEMPLATE).then(() => {
-      btn.textContent = 'Kopierat!';
+      btn.textContent = 'Kopiert!';
       setTimeout(() => { btn.textContent = original; }, 1500);
     }).catch(() => {
-      window.prompt('Det gick inte att kopiera automatiskt - kopiera texten nedan manuellt:', MOTIVATION_INSTRUCTION_TEMPLATE);
+      window.prompt('Kunne ikke kopiere automatisk - kopier teksten under manuelt:', MOTIVATION_INSTRUCTION_TEMPLATE);
     });
   });
   actions.appendChild(btn);
 }
 
-// Hjelp-knapp («Hur använder jag den här sidan?»), alle fag. Åpner en popup
+// Hjelp-knapp («Hvordan bruker jeg denne siden?»), alle fag. Åpner en popup
 // med en kort, generell forklaring av hvordan kartet skal brukes - ikke
 // knyttet til noe fagspesifikt utover om faget viser hjelpemiddel-merking
 // og/eller motivasjonsknappen. Egen, alltid synlig knapp rett til høyre for
@@ -461,8 +455,8 @@ function setupHelpButton() {
   btn.id = 'help-btn';
   btn.type = 'button';
   btn.textContent = '?';
-  btn.setAttribute('aria-label', 'Hur använder jag den här sidan?');
-  btn.title = 'Hur använder jag den här sidan?';
+  btn.setAttribute('aria-label', 'Hvordan bruker jeg denne siden?');
+  btn.title = 'Hvordan bruker jeg denne siden?';
   btn.addEventListener('click', () => {
     closeActionMenu();
     openHelpModal();
@@ -489,12 +483,12 @@ function ensureHelpModal() {
   header.id = 'help-header';
 
   const h2 = document.createElement('h2');
-  h2.textContent = 'Hur använder jag den här sidan?';
+  h2.textContent = 'Hvordan bruker jeg denne siden?';
   header.appendChild(h2);
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'btn secondary';
-  closeBtn.textContent = '✕ Stäng';
+  closeBtn.textContent = '✕ Lukk';
   closeBtn.addEventListener('click', closeHelpModal);
   header.appendChild(closeBtn);
 
@@ -528,28 +522,28 @@ function renderHelpBody(body) {
   body.innerHTML = '';
 
   helpSection(body, 'Menyknappen',
-    'Tryck på ☰-knappen längst ner till vänster, bredvid den här hjälpknappen, för att öppna en meny med tillbaka-länk, ljust/mörkt läge, ditt framsteg och de andra knapparna på sidan - förklarade nedan.');
+    'Trykk på ☰-knappen nederst til venstre, ved siden av denne hjelpeknappen, for å åpne en meny med tilbake-lenke, lys/mørk modus, fremgangen din og de andre knappene på siden - forklart under.');
 
-  helpSection(body, 'Kartan',
-    'Kartan visar hur färdigheter och begrepp bygger på varandra, från det mest grundläggande till vänster till det mest sammansatta till höger. Rutorna du inte har förkunskaperna för än ser du som grå och låsta - kryssa i det som saknas först. Dra för att panorera kartan, och använd +/- eller mushjulet för att zooma.');
+  helpSection(body, 'Kartet',
+    'Kartet viser hvordan ferdigheter og begreper bygger på hverandre, fra det mest grunnleggende til venstre til det mest sammensatte til høyre. Boksene du ikke har forutsetningene for ennå, ser du som grå og låste - huk av dem du mangler først. Dra for å panorere kartet, og bruk +/- eller musehjulet for å zoome.');
 
-  helpSection(body, 'Klicka på en ruta',
-    'När du klickar på en ruta får du upp förkunskaperna, en fullständig beskrivning av lärandemålet, och en AI-instruktion du kan kopiera och klistra in i en AI-chatt för att träna på just den färdigheten. Markera rutan som avklarad när du kan den - framstegen sparas i din webbläsare, och du kan ta bort markeringen igen när du vill.');
+  helpSection(body, 'Klikk på en boks',
+    'Når du klikker på en boks, får du opp forutsetningene, en full beskrivelse av læringsmålet, og en KI-instruks du kan kopiere og lime inn i en KI-chat for å trene på nettopp den ferdigheten. Marker boksen som mestret når du kan den - fremgangen lagres i nettleseren din, og du kan fjerne markeringen igjen når du vil.');
 
-  helpSection(body, '«Visa alla lärandemål»',
-    'När du trycker på den här knappen får du en samlad, systematisk lista över alla lärandemålen i ämnet, sorterad efter tema - praktiskt när du vill ha överblick eller läsa igenom hela listan utan att klicka dig igenom kartan.');
+  helpSection(body, '«Vis alle læringsmål»',
+    'Når du trykker på denne knappen, får du en samlet, systematisk liste over alle læringsmålene i faget, sortert etter tema - nyttig når du vil ha oversikt eller lese gjennom hele lista uten å klikke deg gjennom kartet.');
 
-  helpSection(body, '«Skapa prov av avklarade färdigheter»',
-    'När du trycker på den här knappen får du en AI-instruktion för ett prov som täcker ett urval av det du redan markerat som avklarat. Klistra in den i en AI-chatt för att testa dig själv över flera färdigheter samtidigt.');
+  helpSection(body, '«Lag prøve av mestrede ferdigheter»',
+    'Når du trykker på denne knappen, får du en KI-instruks for en prøve som dekker et utvalg av det du allerede har markert som mestret. Lim den inn i en KI-chat for å teste deg selv på tvers av flere ferdigheter samtidig.');
 
   if (SHOW_HJELPEMIDDEL) {
     helpSection(body, 'D1 / D2',
-      'Märkningen på en ruta visar vilken del av provet färdigheten hör till - del 1 (utan hjälpmedel) eller del 2 (med hjälpmedel), eller båda.');
+      'Merkelappen på en boks viser deg hvilken del av eksamen ferdigheten hører til - del 1 (uten hjelpemidler) eller del 2 (med hjelpemidler), eller begge.');
   }
 
   if (SHOW_MOTIVATION_BUTTON) {
-    helpSection(body, '«Varför ska jag lära mig matte?»',
-      'När du trycker på den här knappen får du en AI-instruktion för ett kort samtal om varför det är värt att lära sig ämnet överhuvudtaget. Klistra in den i en AI-chatt om du behöver en knuff i rätt riktning.');
+    helpSection(body, '«Hvorfor skal jeg lære matte?»',
+      'Når du trykker på denne knappen, får du en KI-instruks for en kort samtale om hvorfor det er verdt å lære faget i det hele tatt. Lim den inn i en KI-chat hvis du trenger et dytt i riktig retning.');
   }
 }
 
@@ -590,7 +584,7 @@ function ensureGoalIndexModal() {
   header.id = 'goal-index-header';
 
   const h2 = document.createElement('h2');
-  h2.textContent = 'Alla lärandemål';
+  h2.textContent = 'Alle læringsmål';
   header.appendChild(h2);
 
   const actions = document.createElement('div');
@@ -598,22 +592,22 @@ function ensureGoalIndexModal() {
 
   const copyBtn = document.createElement('button');
   copyBtn.className = 'btn';
-  copyBtn.textContent = 'Kopiera alla';
+  copyBtn.textContent = 'Kopier alle';
   copyBtn.addEventListener('click', () => {
     const text = composeGoalIndexText();
     navigator.clipboard.writeText(text).then(() => {
       const original = copyBtn.textContent;
-      copyBtn.textContent = 'Kopierat!';
+      copyBtn.textContent = 'Kopiert!';
       setTimeout(() => { copyBtn.textContent = original; }, 1500);
     }).catch(() => {
-      window.prompt('Det gick inte att kopiera automatiskt - kopiera texten nedan manuellt:', text);
+      window.prompt('Kunne ikke kopiere automatisk - kopier teksten under manuelt:', text);
     });
   });
   actions.appendChild(copyBtn);
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'btn secondary';
-  closeBtn.textContent = '✕ Stäng';
+  closeBtn.textContent = '✕ Lukk';
   closeBtn.addEventListener('click', closeGoalIndexModal);
   actions.appendChild(closeBtn);
 
@@ -680,22 +674,22 @@ function setupExamButton() {
 
   const countLabel = document.createElement('label');
   countLabel.id = 'exam-count-label';
-  countLabel.textContent = 'Antal uppgifter';
+  countLabel.textContent = 'Antall oppgaver';
   const countInput = document.createElement('input');
   countInput.type = 'number';
   countInput.id = 'exam-count';
   countInput.min = '1';
   countInput.max = '50';
   countInput.value = '10';
-  countInput.setAttribute('aria-label', 'Antal uppgifter i provet');
+  countInput.setAttribute('aria-label', 'Antall oppgaver i prøven');
   countLabel.appendChild(countInput);
   widget.appendChild(countLabel);
 
   const examBtn = document.createElement('button');
   examBtn.id = 'exam-btn';
   examBtn.type = 'button';
-  examBtn.textContent = 'Skapa prov av avklarade färdigheter';
-  examBtn.title = 'Kopiera en AI-instruktion för att skapa ett prov baserat på det du har markerat som avklarat';
+  examBtn.textContent = 'Lag prøve av mestrede ferdigheter';
+  examBtn.title = 'Kopier en KI-instruks for å lage en prøve basert på det du har markert som mestret';
   widget.appendChild(examBtn);
 
   examBtn.addEventListener('click', () => {
@@ -704,7 +698,7 @@ function setupExamButton() {
     const masteredNodes = allNodes.filter(n => isNodeMastered(n, progress));
 
     if (!masteredNodes.length) {
-      examBtn.textContent = 'Inga avklarade färdigheter än';
+      examBtn.textContent = 'Ingen mestrede ferdigheter ennå';
       setTimeout(() => { examBtn.textContent = original; }, 1800);
       return;
     }
@@ -714,10 +708,10 @@ function setupExamButton() {
     const text = composeExamInstruction(masteredNodes, count);
 
     navigator.clipboard.writeText(text).then(() => {
-      examBtn.textContent = 'Kopierat!';
+      examBtn.textContent = 'Kopiert!';
       setTimeout(() => { examBtn.textContent = original; }, 1500);
     }).catch(() => {
-      window.prompt('Det gick inte att kopiera automatiskt - kopiera texten nedan manuellt:', text);
+      window.prompt('Kunne ikke kopiere automatisk - kopier teksten under manuelt:', text);
     });
   });
 
@@ -734,19 +728,19 @@ function hjelpemiddelKort(value) {
 // noder; instruksen ber KI-en velge et representativt utvalg på `count`
 // oppgaver som til sammen dekker flest mulig av dem.
 function composeExamInstruction(nodes, count) {
-  const courseLabel = CONFIG.courseName || 'ämnet';
+  const courseLabel = CONFIG.courseName || 'faget';
   const list = nodes
     .map(n => {
-      const tags = [typeLabelText(n.type)];
+      const tags = [n.type];
       if (SHOW_HJELPEMIDDEL) tags.push(hjelpemiddelKort(n.hjelpemiddel));
       return `- ${n.navn} [${tags.join(', ')}]: ${n.beskrivelse}`;
     })
     .join('\n');
 
   const parts = [];
-  parts.push(`Du är en AI-inlärningsassistent som ska skapa ett skriftligt prov i ${courseLabel} till en elev, baserat på de färdigheter och begrepp eleven (eller läraren) har markerat som avklarade i färdighetsträdet.`);
-  parts.push(`Följande ${nodes.length} färdigheter/begrepp är markerade som avklarade:\n${list}`);
-  parts.push(`Skapa ett prov med exakt ${count} uppgift(er). Provet behöver inte täcka alla punkter ovan - välj hellre ut ett representativt urval som tillsammans täcker så många som möjligt av dem, variera svårighetsgrad, och låt gärna några uppgifter kombinera flera av färdigheterna. Numrera uppgifterna och formulera dem som de typiskt skulle sett ut på ett skriftligt prov i ämnet.`);
+  parts.push(`Du er en KI-læringsassistent som skal lage en skriftlig prøve i ${courseLabel} til en elev, basert på ferdighetene og begrepene eleven (eller læreren) har markert som mestret i ferdighetstreet.`);
+  parts.push(`Følgende ${nodes.length} ferdigheter/begreper er markert som mestret:\n${list}`);
+  parts.push(`Lag en prøve med nøyaktig ${count} oppgave(r). Prøven trenger ikke dekke alle punktene over - velg heller ut et representativt utvalg som til sammen dekker flest mulig av dem, varier vanskelighetsgrad, og la gjerne noen oppgaver kombinere flere av ferdighetene. Nummerer oppgavene og formuler dem slik de typisk ville sett ut på en skriftlig prøve/eksamen i faget.`);
 
   if (nodes.some(n => n.type === 'begrep')) {
     parts.push(buildExamBegrepGuidance(nodes));
@@ -759,11 +753,11 @@ function composeExamInstruction(nodes, count) {
       const hjelpemiddelParts = [];
       if (hasDel1) hjelpemiddelParts.push(composeHjelpemiddelContext('del1'));
       if (hasDel2) hjelpemiddelParts.push(composeHjelpemiddelContext('del2'));
-      parts.push(`Märk varje uppgift med [D1] eller [D2] efter vilken del den hör till, och håll dig till rätt hjälpmedelsanvändning för respektive del:\n${hjelpemiddelParts.join('\n')}`);
+      parts.push(`Merk hver oppgave med [D1] eller [D2] etter hvilken del den hører til, og hold deg til riktig hjelpemiddelbruk for hver del:\n${hjelpemiddelParts.join('\n')}`);
     }
   }
 
-  parts.push('Visa ENDAST uppgifterna först, utan facit. Ge inte facit förrän eleven har svarat - vänta tills eleven ber om bedömning (antingen efter varje uppgift, eller efter att ha svarat på alla samtidigt). Ge då ett fullständigt facit med motivering för varje svar, en kort bedömning av vad eleven klarade, och vad hen bör öva mer på.');
+  parts.push('Vis KUN oppgavene først, uten fasit. Ikke gi fasit før eleven har svart - vent til eleven ber om vurdering (enten etter hver oppgave, eller etter å ha svart på alle sammen). Gi da en fullstendig fasit med begrunnelse for hvert svar, en kort vurdering av hva eleven fikk til, og hva hen bør øve mer på.');
 
   return parts.join('\n\n');
 }
@@ -863,15 +857,15 @@ async function init() {
     layoutAndRender();
     updateProgressUI();
   } catch (err) {
-    console.error('Kunde inte ladda färdighetsträdet:', err);
-    validationErrors.push('Kritiskt fel vid inläsning: ' + err.message + ' (kör du sidan via en lokal server? fetch() av CSV-filer misslyckas ofta om man öppnar index.html direkt från disk i webbläsaren.)');
+    console.error('Kunne ikke laste ferdighetstreet:', err);
+    validationErrors.push('Kritisk feil ved lasting: ' + err.message + ' (kjører du siden via en lokal server? fetch() av CSV-filer feiler ved å åpne index.html direkte fra disk i mange nettlesere.)');
     renderErrorBanner();
   }
 }
 
 function fetchText(path) {
   return fetch(path).then(res => {
-    if (!res.ok) throw new Error(`Hittade inte ${path} (status ${res.status})`);
+    if (!res.ok) throw new Error(`Fant ikke ${path} (status ${res.status})`);
     return res.text();
   });
 }
@@ -879,7 +873,7 @@ function fetchText(path) {
 function parseCsv(text) {
   const result = Papa.parse(text, { header: true, skipEmptyLines: true });
   if (result.errors && result.errors.length) {
-    result.errors.forEach(e => validationErrors.push(`CSV-fel: ${e.message} (rad ${e.row})`));
+    result.errors.forEach(e => validationErrors.push(`CSV-feil: ${e.message} (rad ${e.row})`));
   }
   return result.data;
 }
@@ -897,7 +891,7 @@ function buildNodeIndex(rows) {
     const node = {
       id,
       type: (row.type || '').trim(),
-      emne: (row.emne || '').trim() || FALLBACK_TOPIC,
+      emne: (row.emne || '').trim() || 'Annet',
       navn: (row.navn || '').trim(),
       beskrivelse: (row.beskrivelse || '').trim(),
       avhenger_av: (row.avhenger_av || '').split(';').map(s => s.trim()).filter(Boolean),
@@ -944,16 +938,16 @@ function validateReferences() {
   allNodes.forEach(node => {
     node.avhenger_av.forEach(depId => {
       if (!nodesById.has(depId)) {
-        validationErrors.push(`Noden "${node.id}" refererar till okänt avhenger_av-id "${depId}".`);
+        validationErrors.push(`Node "${node.id}" refererer til ukjent avhenger_av-id "${depId}".`);
       }
     });
-    if (node.emne === FALLBACK_TOPIC && !TOPIC_ORDER.includes(FALLBACK_TOPIC)) {
-      validationErrors.push(`Noden "${node.id}" saknar "emne" i noder.csv och hamnar i samlekolumnen "${FALLBACK_TOPIC}".`);
+    if (node.emne === 'Annet' && !TOPIC_ORDER.includes('Annet')) {
+      validationErrors.push(`Node "${node.id}" mangler "emne" i noder.csv og havner i samle-kolonnen "Annet".`);
     }
   });
   examsByNode.forEach((rows, nodeId) => {
     if (!nodesById.has(nodeId)) {
-      validationErrors.push(`eksamensoppgaver.csv refererar till okänt node_id "${nodeId}".`);
+      validationErrors.push(`eksamensoppgaver.csv refererer til ukjent node_id "${nodeId}".`);
     }
   });
 }
@@ -973,7 +967,7 @@ function validateDag() {
       if (c === GRAY) {
         const cycleStart = stack.indexOf(dep.id);
         const cycle = stack.slice(cycleStart).concat(dep.id);
-        validationErrors.push(`Cykel upptäckt i avhenger_av: ${cycle.join(' -> ')}`);
+        validationErrors.push(`Syklus oppdaget i avhenger_av: ${cycle.join(' -> ')}`);
       } else if (c === WHITE) {
         visit(dep);
       }
@@ -994,8 +988,8 @@ function renderErrorBanner() {
     banner.textContent = '';
     return;
   }
-  console.warn('Validering av färdighetsträdet hittade problem:\n' + validationErrors.join('\n'));
-  banner.textContent = '⚠ ' + validationErrors.length + ' problem hittades i datafilerna (se konsolen för detaljer):\n' + validationErrors.join('\n');
+  console.warn('Ferdighetstre-validering fant problemer:\n' + validationErrors.join('\n'));
+  banner.textContent = '⚠ ' + validationErrors.length + ' problem(er) funnet i datafilene (se konsoll for detaljer):\n' + validationErrors.join('\n');
   banner.classList.add('visible');
 }
 
@@ -1019,7 +1013,7 @@ function groupByColumn() {
   const known = TOPIC_ORDER.filter(t => columns.has(t));
   const unknown = [...columns.keys()]
     .filter(t => !TOPIC_ORDER.includes(t))
-    .sort((a, b) => a.localeCompare(b, 'sv'));
+    .sort((a, b) => a.localeCompare(b, 'nb'));
   return [...known, ...unknown].map(topic => ({ topic, nodes: columns.get(topic) }));
 }
 
@@ -1126,7 +1120,7 @@ function layoutColumn(nodes, globalRowStart) {
   nodes.forEach(node => levelRows.get(node.nivaa).push(node));
 
   // Startrekkefølge: stabil, alfabetisk på navn for et deterministisk utgangspunkt
-  levelRows.forEach(row => row.sort((a, b) => a.navn.localeCompare(b.navn, 'sv')));
+  levelRows.forEach(row => row.sort((a, b) => a.navn.localeCompare(b.navn, 'nb')));
   levelsPresent.forEach(lvl => assignOrderIndex(levelRows.get(lvl)));
 
   for (let pass = 0; pass < LAYOUT.barycenterPasses; pass++) {
@@ -1224,14 +1218,6 @@ function layoutAndRender() {
 /* Rendering av grafen                                                  */
 /* ------------------------------------------------------------------ */
 
-// Viser den svenska visningsteksten for en nodetype ("begrepp"/"färdighet")
-// - selve datafeltet node.type holdes uoversatt (begrep/ferdighet) siden det
-// er del av den delte datakontrakten på tvers av begge motorene, se "To
-// motorer, ett datamodell" i instruks.md.
-function typeLabelText(type) {
-  return type === 'begrep' ? 'begrepp' : type === 'ferdighet' ? 'färdighet' : type;
-}
-
 function renderGraph(columnMeta) {
   const container = document.getElementById('graph-container');
   const nodesLayer = document.getElementById('nodes-layer');
@@ -1282,7 +1268,7 @@ function renderGraph(columnMeta) {
     markBtn.type = 'button';
     markBtn.className = 'column-header-btn';
     markBtn.textContent = '✓';
-    markBtn.title = `Markera alla färdigheter i «${col.topic}» som avklarade`;
+    markBtn.title = `Marker alle ferdigheter i «${col.topic}» som mestret`;
     markBtn.addEventListener('click', () => bulkSetMastery(col.nodes, true));
     actions.appendChild(markBtn);
 
@@ -1290,7 +1276,7 @@ function renderGraph(columnMeta) {
     clearBtn.type = 'button';
     clearBtn.className = 'column-header-btn';
     clearBtn.textContent = '✕';
-    clearBtn.title = `Ta bort avklarad-markering för alla färdigheter i «${col.topic}»`;
+    clearBtn.title = `Fjern mestret-merking for alle ferdigheter i «${col.topic}»`;
     clearBtn.addEventListener('click', () => bulkSetMastery(col.nodes, false));
     actions.appendChild(clearBtn);
 
@@ -1365,7 +1351,7 @@ function createNodeElement(node, progress) {
   if (SHOW_HJELPEMIDDEL) metaLeft.appendChild(makeHjelpemiddelBadge(node.hjelpemiddel));
   const typeLabel = document.createElement('span');
   typeLabel.className = 'badge-type';
-  typeLabel.textContent = typeLabelText(node.type);
+  typeLabel.textContent = node.type;
   metaLeft.appendChild(typeLabel);
   meta.appendChild(metaLeft);
 
@@ -1373,7 +1359,7 @@ function createNodeElement(node, progress) {
   checkbox.type = 'checkbox';
   checkbox.className = 'node-checkbox';
   checkbox.checked = !!entry.mastered;
-  checkbox.title = 'Markera som avklarad';
+  checkbox.title = 'Marker som mestret';
   checkbox.addEventListener('click', e => e.stopPropagation());
   checkbox.addEventListener('change', () => setNodeProgress(node.id, 'mastered', checkbox.checked));
   meta.appendChild(checkbox);
@@ -1475,7 +1461,7 @@ function updateProgressUI() {
   const done = allNodes.filter(n => isNodeMastered(n, progress)).length;
   const pct = total ? Math.round((done / total) * 100) : 0;
   document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-label').textContent = `${done} av ${total} färdigheter avklarade`;
+  document.getElementById('progress-label').textContent = `${done} av ${total} ferdigheter fullført`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1508,8 +1494,8 @@ function composeHjelpemiddelContext(hjelpemiddel) {
   if (typeof CONFIG.composeHjelpemiddelContext === 'function') {
     return CONFIG.composeHjelpemiddelContext(hjelpemiddel);
   }
-  const labels = { del1: 'del 1', del2: 'del 2', begge: 'del 1 och del 2' };
-  return `Hjälpmedel: Detta gäller ${labels[hjelpemiddel] || 'provet'}.`;
+  const labels = { del1: 'del 1', del2: 'del 2', begge: 'del 1 og del 2' };
+  return `Hjelpemidler: Dette gjelder ${labels[hjelpemiddel] || 'eksamen'}.`;
 }
 
 function composeInstruction(node) {
@@ -1519,12 +1505,12 @@ function composeInstruction(node) {
   const ancestors = getAllAncestors(node);
   if (ancestors.length) {
     const names = ancestors.map(a => `- ${a.navn}`).join('\n');
-    parts.push(`Eleven ska sedan tidigare behärska följande förkunskaper:\n${names}`);
+    parts.push(`Eleven skal fra før beherske følgende forutsetninger:\n${names}`);
   } else {
-    parts.push('Denna nod har inga förkunskaper registrerade i färdighetsträdet - anta att eleven är helt ny inför detta begrepp/denna färdighet.');
+    parts.push('Denne noden har ingen forutsetninger registrert i ferdighetstreet - anta at eleven er helt ny til dette begrepet/ferdigheten.');
   }
 
-  parts.push(`Målet för passet är att eleven ska lära sig följande: "${node.navn}". Texten nedan beskriver vad det innebär att bemästra noden - det är målet för passet, inte något eleven redan kan:\n${node.beskrivelse}`);
+  parts.push(`Målet for økta er at eleven skal lære følgende: "${node.navn}". Teksten under beskriver hva det vil si å mestre noden - det er målet for økta, ikke noe eleven kan fra før:\n${node.beskrivelse}`);
 
   if (node.type === 'begrep') {
     parts.push(BEGREP_TEST_GUIDANCE);
@@ -1584,7 +1570,7 @@ function renderDetail(node) {
 
   const closeBtn = document.createElement('button');
   closeBtn.id = 'detail-close';
-  closeBtn.textContent = '✕ stäng';
+  closeBtn.textContent = '✕ lukk';
   closeBtn.addEventListener('click', closeDetail);
   inner.appendChild(closeBtn);
 
@@ -1597,23 +1583,23 @@ function renderDetail(node) {
   if (SHOW_HJELPEMIDDEL) meta.appendChild(makeHjelpemiddelBadge(node.hjelpemiddel));
   const typeBadge = document.createElement('span');
   typeBadge.className = 'badge-type';
-  typeBadge.textContent = typeLabelText(node.type);
+  typeBadge.textContent = node.type;
   meta.appendChild(typeBadge);
   inner.appendChild(meta);
 
   const status = document.createElement('div');
   status.id = 'detail-status';
   status.textContent = mastered
-    ? '✓ Avklarad'
+    ? '✓ Mestret'
     : available
-      ? 'Tillgänglig — förkunskaperna är uppfyllda'
-      : 'Låst — förkunskaper saknas';
+      ? 'Tilgjengelig — forutsetninger er oppfylt'
+      : 'Låst — mangler forutsetninger';
   if (available && !mastered) status.classList.add('available');
   inner.appendChild(status);
 
   const toggles = document.createElement('div');
   toggles.className = 'mastery-toggles';
-  toggles.appendChild(createMasteryToggle('Markera som avklarad', entry.mastered, checked => setNodeProgress(node.id, 'mastered', checked)));
+  toggles.appendChild(createMasteryToggle('Marker som mestret', entry.mastered, checked => setNodeProgress(node.id, 'mastered', checked)));
   inner.appendChild(toggles);
 
   const desc = document.createElement('p');
@@ -1625,7 +1611,7 @@ function renderDetail(node) {
     const h3 = document.createElement('div');
     h3.className = 'badge-type';
     h3.style.marginBottom = '0.4rem';
-    h3.textContent = 'Förkunskaper';
+    h3.textContent = 'Forutsetninger';
     inner.appendChild(h3);
     const ul = document.createElement('ul');
     ul.className = 'prereq-list';
@@ -1636,7 +1622,7 @@ function renderDetail(node) {
       const check = document.createElement('span');
       check.className = 'prereq-check';
       check.textContent = aMastered ? '✓' : '○';
-      check.title = aMastered ? 'Avklarad' : 'Inte avklarad än';
+      check.title = aMastered ? 'Mestret' : 'Ikke mestret ennå';
       li.appendChild(check);
       const link = document.createElement('button');
       link.type = 'button';
@@ -1657,12 +1643,12 @@ function renderDetail(node) {
 
   const showBtn = document.createElement('button');
   showBtn.className = 'btn secondary';
-  showBtn.textContent = 'Visa AI-instruktion';
+  showBtn.textContent = 'Vis KI-instruks';
   actions.appendChild(showBtn);
 
   const copyBtn = document.createElement('button');
   copyBtn.className = 'btn';
-  copyBtn.textContent = 'Kopiera AI-instruktion';
+  copyBtn.textContent = 'Kopier KI-instruks';
   actions.appendChild(copyBtn);
 
   inner.appendChild(actions);
@@ -1676,13 +1662,13 @@ function renderDetail(node) {
 
   showBtn.addEventListener('click', () => {
     const visible = textarea.classList.toggle('visible');
-    showBtn.textContent = visible ? 'Dölj AI-instruktion' : 'Visa AI-instruktion';
+    showBtn.textContent = visible ? 'Skjul KI-instruks' : 'Vis KI-instruks';
   });
 
   copyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(instructionText).then(() => {
       const original = copyBtn.textContent;
-      copyBtn.textContent = 'Kopierat!';
+      copyBtn.textContent = 'Kopiert!';
       setTimeout(() => { copyBtn.textContent = original; }, 1500);
     }).catch(() => {
       textarea.classList.add('visible');
@@ -1694,14 +1680,14 @@ function renderDetail(node) {
     const h3 = document.createElement('div');
     h3.className = 'badge-type';
     h3.style.margin = '1.4rem 0 0.4rem';
-    h3.textContent = 'Provuppgifter';
+    h3.textContent = 'Eksamensoppgaver';
     inner.appendChild(h3);
 
     const ul = document.createElement('ul');
     ul.className = 'exam-list';
     exams.forEach(exam => {
       const li = document.createElement('li');
-      const label = `${capitalize(exam.sesong)} ${exam.aar}, del ${exam.del}, uppgift ${exam.oppgavenummer}`;
+      const label = `${capitalize(exam.sesong)} ${exam.aar}, del ${exam.del}, oppgave ${exam.oppgavenummer}`;
       if (exam.url) {
         const a = document.createElement('a');
         a.href = exam.url;
