@@ -179,7 +179,7 @@
 
             <p><span class="run-new">Sensor vurderer masteroppgaven etter kriteriene i tabellen under, ut fra hvilken grad kandidaten har oppnådd måloppnåelse på hvert punkt. Muntlig forsvar og veileders og studentens vurdering av prosessen brukes til å nyansere helhetsinntrykket.</span> <button class="cite-btn cite-btn--new" type="button" aria-expanded="false" aria-controls="cite-mo-grad-c">begrunnelse</button><span class="cite-box cite-box--new" id="cite-mo-grad-c" hidden>Å vurdere direkte opp mot kriteriene i tabellen gjør selve kriteriet, ikke et fast gradert skjema, til vurderingsgrunnlaget for hvert punkt.</span></p>
 
-            <a href="/masteroppgave-retningslinjer/skjema/" class="btn-outline crit-download" target="_blank" rel="noopener">Last ned skjema for utfylling →</a>
+            <a href="/masteroppgave-retningslinjer/skjema/" class="btn-outline-accent crit-download" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Last ned skjema for utfylling</a>
 
             <div class="table-scroll">
                 <table class="criteria-table">
@@ -220,7 +220,7 @@
             <p>Den er ikke en del av karaktergrunnlaget og skal ikke foreslå eller påvirke karakteren direkte, men gi sensor kontekst om oppgaven og arbeidet bak den. <button class="cite-btn" type="button" aria-expanded="false" aria-controls="cite-vv-3">kilde</button><span class="cite-box" id="cite-vv-3" hidden><strong>Kilde:</strong> skjemaet legges i dag fram av veileder i et forhåndsmøte før selve eksaminasjonen (se <a href="#muntlig-forsvar" class="section-ref">§8</a>) — det inngår altså ikke i fastsettelsen av den skriftlige karakteren i dagens praksis heller. Veileder har fulgt arbeidsprosessen tett, men skal ikke dermed få avgjøre karakteren — det er fortsatt sensors ansvar alene.</span></p>
             <p><span class="run-new">Skjemaet er felles for alle institutter, og leveres skriftlig sammen med oppgaven til sensor. Normal lengde er om lag to sider.</span> <button class="cite-btn cite-btn--new" type="button" aria-expanded="false" aria-controls="cite-vv-4">begrunnelse</button><span class="cite-box cite-box--new" id="cite-vv-4" hidden>En standardisert, tidlig frist sikrer at begge sensorene har denne konteksten skriftlig tilgjengelig når de vurderer oppgaven.</span></p>
 
-            <a href="/masteroppgave-retningslinjer/skjema/#veileders-vurdering" class="btn-outline crit-download" target="_blank" rel="noopener">Last ned skjema for utfylling →</a>
+            <a href="/masteroppgave-retningslinjer/skjema/#veileders-vurdering" class="btn-outline-accent crit-download" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Last ned skjema for utfylling</a>
 
             <div class="table-scroll">
                 <table class="criteria-table">
@@ -248,7 +248,7 @@
             <p><span class="run-new">Sammen med veileders vurdering gir dette sensorene et mer helhetlig bilde av arbeidet bak oppgaven enn det skriftlige produktet alene kan vise.</span> <span class="run-new">Heller ikke dette er en del av karaktergrunnlaget, men kontekst for sensor.</span> <button class="cite-btn cite-btn--new" type="button" aria-expanded="false" aria-controls="cite-sv-2">begrunnelse</button><span class="cite-box cite-box--new" id="cite-sv-2" hidden>Samme prinsipp som for veileders vurdering: konteksten skal informere sensor, ikke gi kandidaten et forslag til egen karakter. Dette skillet er avgjørende for at elementet ikke skal oppfattes som en mulighet til å argumentere seg til bedre karakter.</span></p>
             <p><span class="run-new">Under følger en mal for hva redegjørelsen dekker. Normal lengde er om lag to sider.</span> <button class="cite-btn cite-btn--new" type="button" aria-expanded="false" aria-controls="cite-sv-3">begrunnelse</button><span class="cite-box cite-box--new" id="cite-sv-3" hidden>Det finnes ingen tilsvarende eksisterende mal for en studentversjon av prosessvurderingen — temaene under er derfor speilet av kategoriene i veileders vurdering (se <a href="#veileders-vurdering" class="section-ref">§5</a>), omformulert til kandidatens perspektiv, slik at de to redegjørelsene lar seg lese opp mot hverandre.</span></p>
 
-            <a href="/masteroppgave-retningslinjer/skjema/#studentens-vurdering" class="btn-outline crit-download" target="_blank" rel="noopener">Last ned skjema for utfylling →</a>
+            <a href="/masteroppgave-retningslinjer/skjema/#studentens-vurdering" class="btn-outline-accent crit-download" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Last ned skjema for utfylling</a>
 
             <div class="table-scroll">
                 <table class="criteria-table">
@@ -629,9 +629,9 @@
 
         .element-list .element-item {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: flex-start;
-            gap: 0.6rem;
+            gap: 0.9rem;
             border: 1px solid color-mix(in srgb, var(--item-color) 35%, var(--border));
             border-left: 3px solid var(--item-color);
             border-radius: var(--radius-sm);
@@ -764,7 +764,13 @@
 
         .criteria-table tbody:last-of-type tr:last-child td, .timeline-table tr:last-child td { border-bottom: none; }
 
-        .crit-download { margin: 1rem 0 0.4rem; display: inline-flex; }
+        .crit-download {
+            margin: 1rem 0 0.4rem;
+            display: inline-flex;
+            background: color-mix(in srgb, var(--accent) 12%, transparent);
+            font-weight: 700;
+        }
+        .crit-download svg { width: 17px; height: 17px; }
 
         @media (max-width: 720px) {
             .criteria-table, .criteria-table tbody, .criteria-table tr, .criteria-table td,
