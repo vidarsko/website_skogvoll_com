@@ -19,6 +19,8 @@
   <script src="/js/analytics.js"></script>
   <script src="/js/theme.js" defer></script>
   <script src="/js/nav.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.iife.min.js" defer></script>
+  <script src="/js/skjema-docx.js" defer></script>
 </head>
 <body>
 
@@ -51,8 +53,41 @@
     </header>
 
     <main id="main">
-        <section class="panel content-panel">
-            <h1>Her vil det komme nedlastbare skjemaer til utfylling.</h1>
+        <div class="page-header">
+            <a href="/masteroppgave-retningslinjer/" class="back-link">← Tilbake til vurderingsveiledningen</a>
+            <div class="draft-banner">
+                <span aria-hidden="true">⚠</span>
+                <p><strong>Dette er et internt utkast</strong> til skjemaer for en ny vurderingsveiledning for masteroppgaven ved MN-fakultetet, UiO. Det er <strong>ikke gjeldende praksis</strong>.</p>
+            </div>
+            <h1>Skjemaer til utfylling</h1>
+            <p>Last ned et redigerbart Word-dokument (.docx) for hvert skjema. Dokumentet genereres i nettleseren når du trykker på knappen.</p>
+        </div>
+
+        <section id="masteroppgaven" class="panel content-panel form-card">
+            <h2>Kriterietabell for masteroppgaven</h2>
+            <p>Kriteriene sensor vurderer masteroppgaven etter, gruppert etter vekt, med plass til kommentar per kriterium.</p>
+            <button type="button" class="btn-outline-accent" data-docx="masteroppgaven">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+                Last ned .docx
+            </button>
+        </section>
+
+        <section id="veileders-vurdering" class="panel content-panel form-card">
+            <h2>Veileders vurdering av prosessen</h2>
+            <p>Veileders skriftlige redegjørelse for arbeidsform, arbeidsinnsats, selvstendighet og progresjon, med et veiledende spørsmål per kategori.</p>
+            <button type="button" class="btn-outline-accent" data-docx="veileder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+                Last ned .docx
+            </button>
+        </section>
+
+        <section id="studentens-vurdering" class="panel content-panel form-card">
+            <h2>Studentens vurdering av prosessen</h2>
+            <p>Kandidatens egen skriftlige redegjørelse for prosessen og samarbeidet, med et veiledende spørsmål per tema.</p>
+            <button type="button" class="btn-outline-accent" data-docx="student">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+                Last ned .docx
+            </button>
         </section>
     </main>
 
@@ -73,23 +108,32 @@
     </footer>
 
     <style>
-        main {
-            min-height: 50vh;
-            display: grid;
-            place-items: center;
+        .back-link {
+            display: inline-block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            transition: color 0.2s;
         }
+        .back-link:hover, .back-link:focus-visible { color: var(--accent); }
 
-        .content-panel {
-            max-width: 760px;
-            text-align: center;
-            padding: 3rem 2rem;
+        .draft-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.7rem;
+            background: color-mix(in srgb, var(--warning) 12%, transparent);
+            border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+            border-radius: var(--radius-sm);
+            padding: 0.9rem 1.1rem;
+            margin-bottom: 1.6rem;
         }
+        .draft-banner span { font-size: 1.1rem; line-height: 1.5; }
+        .draft-banner p { color: var(--text); font-size: 0.92rem; line-height: 1.55; max-width: none; margin-top: 0; }
 
-        h1 {
-            margin: 0;
-            font-size: clamp(1.5rem, 2.5vw, 2.2rem);
-            line-height: 1.3;
-        }
+        .form-card p { color: var(--text-muted); margin-bottom: 1.2rem; }
+
+        .form-card button svg { width: 17px; height: 17px; }
+        .form-card button[disabled] { opacity: 0.7; cursor: default; }
     </style>
 
     <script src="/js/password-gate.js"></script>
