@@ -19,8 +19,11 @@
   <script src="/js/analytics.js"></script>
   <script src="/js/theme.js" defer></script>
   <script src="/js/nav.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.iife.min.js" defer></script>
-  <script src="/js/skjema-docx.js" defer></script>
+  <!-- Nedlastingsfunksjonaliteten er midlertidig slått av (koden er beholdt, se AGENTS.md) —
+       disse to script-taggene laster inn .docx-genereringen og skal ikke aktiveres igjen
+       uten videre avtale. -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.iife.min.js" defer></script> -->
+  <!-- <script src="/js/skjema-docx.js" defer></script> -->
 </head>
 <body>
 
@@ -60,33 +63,33 @@
                 <p><strong>Dette er et internt utkast</strong> til skjemaer for en ny vurderingsveiledning for masteroppgaven ved MN-fakultetet, UiO. Det er <strong>ikke gjeldende praksis</strong>.</p>
             </div>
             <h1>Skjemaer til utfylling</h1>
-            <p>Last ned et redigerbart Word-dokument (.docx) for hvert skjema. Dokumentet genereres i nettleseren når du trykker på knappen.</p>
+            <p>Redigerbare Word-dokumenter (.docx) for hvert skjema kommer.</p>
         </div>
 
         <section id="masteroppgaven" class="panel content-panel form-card">
             <h2>Kriterietabell for masteroppgaven</h2>
             <p>Kriteriene sensor vurderer masteroppgaven etter, gruppert etter vekt, med plass til kommentar per kriterium.</p>
-            <button type="button" class="btn-outline-accent" data-docx="masteroppgaven">
+            <button type="button" class="btn-outline-accent" data-docx="masteroppgaven" disabled>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-                Last ned .docx
+                Last ned .docx (kommer)
             </button>
         </section>
 
         <section id="veileders-vurdering" class="panel content-panel form-card">
             <h2>Veileders vurdering av prosessen</h2>
             <p>Veileders skriftlige redegjørelse for arbeidsform, arbeidsinnsats, selvstendighet og progresjon, med et veiledende spørsmål per kategori.</p>
-            <button type="button" class="btn-outline-accent" data-docx="veileder">
+            <button type="button" class="btn-outline-accent" data-docx="veileder" disabled>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-                Last ned .docx
+                Last ned .docx (kommer)
             </button>
         </section>
 
         <section id="studentens-vurdering" class="panel content-panel form-card">
             <h2>Studentens vurdering av prosessen</h2>
             <p>Kandidatens egen skriftlige redegjørelse for prosessen og samarbeidet, med et veiledende spørsmål per tema.</p>
-            <button type="button" class="btn-outline-accent" data-docx="student">
+            <button type="button" class="btn-outline-accent" data-docx="student" disabled>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-                Last ned .docx
+                Last ned .docx (kommer)
             </button>
         </section>
     </main>
