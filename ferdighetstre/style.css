@@ -457,9 +457,123 @@ main {
   color: var(--text-muted);
 }
 
+#goal-index-intro {
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-bottom: 1.2rem;
+}
+
+/* Én rad per læringsmål: avkryssing for undervisningsopplegget til venstre,
+   navn + status til høyre. De to er bevisst visuelt forskjellige - status
+   er ren lesbar informasjon (mestret/klar/mangler), mens avkryssinga er det
+   eneste man kan klikke på her. */
+.goal-index-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.18rem 0;
+}
+
+.goal-index-item .goal-pick {
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+  transform: translateY(2px);
+}
+
+.goal-index-item-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.7rem;
+  min-width: 0;
+}
+
+.goal-index-item-name {
+  cursor: pointer;
+}
+
+.goal-index-item-status {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: normal;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.goal-index-item.status-mastered .goal-index-item-name { color: var(--text); }
+.goal-index-item.status-mastered .goal-index-item-status { color: var(--accent); opacity: 1; }
+.goal-index-item.status-blocked .goal-index-item-name { opacity: 0.72; }
+
+/* Fast bunnlinje i modalen med undervisningsopplegg-generatoren. */
+#lesson-plan-bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  padding: 0.9rem 1.6rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+#lesson-plan-count {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-right: auto;
+}
+
+#lesson-minutes-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+#lesson-minutes {
+  width: 3.6rem;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#lesson-plan-btn {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: var(--accent-grad);
+  color: #14100A;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+#lesson-plan-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  opacity: 0.92;
+}
+
+#lesson-plan-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 @media (max-width: 720px) {
   #goal-index-overlay { padding: 0; }
   #goal-index-modal { max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
+  #lesson-plan-bar { padding: 0.8rem 1rem; border-radius: 0; }
+  #lesson-plan-count { margin-right: 0; flex: 1 0 100%; }
+  #lesson-plan-btn { flex: 1 1 auto; }
 }
 
 /* «Hvordan bruker jeg denne siden?»-vindu */

@@ -537,7 +537,10 @@ function renderHelpBody(body) {
     'När du klickar på en ruta får du upp förkunskaperna, en fullständig beskrivning av lärandemålet, och en AI-instruktion du kan kopiera och klistra in i en AI-chatt för att träna på just den färdigheten. Markera rutan som avklarad när du kan den - framstegen sparas i din webbläsare, och du kan ta bort markeringen igen när du vill.');
 
   helpSection(body, '«Visa alla lärandemål»',
-    'När du trycker på den här knappen får du en samlad, systematisk lista över alla lärandemålen i ämnet, sorterad efter tema - praktiskt när du vill ha överblick eller läsa igenom hela listan utan att klicka dig igenom kartan.');
+    'När du trycker på den här knappen får du en samlad, systematisk lista över alla lärandemålen i ämnet, sorterad efter tema - praktiskt när du vill ha överblick eller läsa igenom hela listan utan att klicka dig igenom kartan. Varje lärandemål visar status: ✓ betyder att du markerat det som avklarat, ◇ att du har allt du behöver för att lära dig det nu, och ⊘ visar vilka lärandemål du bör ta först (med deras kod, t.ex. C1).');
+
+  helpSection(body, '«Skapa lektionsplanering» (för lärare)',
+    'Längst ner i «Visa alla lärandemål» kan lärare kryssa i de lärandemål nästa lektion ska täcka, ställa in lektionens längd, och få en AI-instruktion för en färdig lektionsplanering: starter, genomgång enligt example-problem pair-modellen, diagnostiska frågor och återkallning på slutet. Ikryssningarna för avklarat är dina egna, i din egen webbläsare - de visar vad du själv gått igenom, inte vad klassen faktiskt kan.');
 
   helpSection(body, '«Skapa prov av avklarade färdigheter»',
     'När du trycker på den här knappen får du en AI-instruktion för ett prov som täcker ett urval av det du redan markerat som avklarat. Klistra in den i en AI-chatt för att testa dig själv över flera färdigheter samtidigt.');
@@ -624,6 +627,57 @@ function ensureGoalIndexModal() {
   body.id = 'goal-index-body';
   modal.appendChild(body);
 
+  // Fast bunnlinje (utenfor det scrollbare innholdet) med undervisnings-
+  // opplegg-generatoren. Ligger her og ikke i handlingsmenyen fordi selve
+  // utvalget av læringsmål skjer i denne lista - knapp og utvalg hører
+  // sammen.
+  const bar = document.createElement('div');
+  bar.id = 'lesson-plan-bar';
+
+  const countLabel = document.createElement('span');
+  countLabel.id = 'lesson-plan-count';
+  bar.appendChild(countLabel);
+
+  const minutesLabel = document.createElement('label');
+  minutesLabel.id = 'lesson-minutes-label';
+  minutesLabel.appendChild(document.createTextNode('Längd'));
+  const minutesInput = document.createElement('input');
+  minutesInput.type = 'number';
+  minutesInput.id = 'lesson-minutes';
+  minutesInput.min = '15';
+  minutesInput.max = '240';
+  minutesInput.step = '5';
+  minutesInput.value = String(LESSON_DEFAULT_MINUTES);
+  minutesInput.setAttribute('aria-label', 'Lektionens längd i minuter');
+  minutesLabel.appendChild(minutesInput);
+  minutesLabel.appendChild(document.createTextNode('min'));
+  bar.appendChild(minutesLabel);
+
+  const planBtn = document.createElement('button');
+  planBtn.id = 'lesson-plan-btn';
+  planBtn.type = 'button';
+  planBtn.textContent = 'Skapa lektionsplanering (för lärare)';
+  planBtn.title = 'Kopiera en AI-instruktion för en färdig lektion om de lärandemål du kryssat i';
+  planBtn.addEventListener('click', () => {
+    const nodes = getLessonSelectionNodes();
+    if (!nodes.length) return;
+
+    const minutes = Math.min(240, Math.max(15, parseInt(minutesInput.value, 10) || LESSON_DEFAULT_MINUTES));
+    minutesInput.value = minutes;
+    const text = composeLessonPlanInstruction(nodes, minutes);
+
+    const original = planBtn.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      planBtn.textContent = 'Kopierat!';
+      setTimeout(() => { planBtn.textContent = original; }, 1500);
+    }).catch(() => {
+      window.prompt('Kunde inte kopiera automatiskt - kopiera texten nedan manuellt:', text);
+    });
+  });
+  bar.appendChild(planBtn);
+
+  modal.appendChild(bar);
+
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
 
@@ -634,8 +688,84 @@ function ensureGoalIndexModal() {
   return overlay;
 }
 
+/* ------------------------------------------------------------------ */
+/* Undervisningsopplegg: flyktig utvalg av læringsmål                   */
+/* ------------------------------------------------------------------ */
+
+// VIKTIG SKILLE: `mestret` (localStorage, se getProgress) er en VARIG
+// tilstand om eleven/klassen og driver fremdriftslinja og prøvegeneratoren.
+// `lessonSelection` er noe helt annet: et FLYKTIG utvalg av hvilke
+// læringsmål én bestemt undervisningsøkt skal dekke. Det lagres bevisst
+// ikke - verken i localStorage eller i CSV - og nullstilles ved reload.
+// Å presse begge inn i samme avkryssing på noden i kartet ville gjort
+// kartet uleselig; derfor bor dette utvalget kun i læringsmål-lista.
+const lessonSelection = new Set();
+
+// Faste rammer for timeplanen. Starter og gjenhenting har fast lengde
+// uansett hvor lang økta er; resten av tiden fordeles likt på de valgte
+// læringsmålene. Blir det mindre enn LESSON_MIN_GOAL_BLOCK minutter igjen
+// per læringsmål, ber instruksen KI-en si fra til læreren om at utvalget er
+// for stort for tiden (se composeLessonPlanInstruction).
+const LESSON_DEFAULT_MINUTES = 45;
+const LESSON_STARTER_MIN = 7;
+const LESSON_RECALL_MIN = 5;
+const LESSON_DIAGNOSTIC_MIN = 3;
+const LESSON_MIN_GOAL_BLOCK = 12;
+
+// Sorteringsnøkkel for en nodes auto-genererte læringsmålkode (A1, A2, ..., B1):
+// bokstav først, deretter tall NUMERISK - ren strengsortering ville gitt
+// A10 før A2.
+function goalIndexSortKey(node) {
+  const m = /^([A-Z]+)(\d+)$/.exec(node.goalIndex || '');
+  return m ? [m[1], parseInt(m[2], 10)] : ['', 0];
+}
+
+function compareByGoalIndex(a, b) {
+  const [la, na] = goalIndexSortKey(a);
+  const [lb, nb] = goalIndexSortKey(b);
+  return la < lb ? -1 : la > lb ? 1 : na - nb;
+}
+
+// Alle forfedre (rekursivt, ikke bare direkte foreldre) som IKKE er markert
+// som mestret. Brukes kun til å vise status i læringsmål-lista - ikke i
+// KI-instruksen for undervisningsopplegget, som bevisst antar at alt
+// underliggende er mestret (se composeLessonPlanInstruction).
+function getMissingAncestors(node, progress) {
+  return getAllAncestors(node)
+    .filter(a => !isNodeMastered(a, progress))
+    .sort(compareByGoalIndex);
+}
+
+// Tre-delt status per node i læringsmål-lista:
+//   mestret  - eleven/læreren har krysset av noden
+//   klar     - ikke mestret, men alle forutsetninger er det (== isAvailable)
+//   mangler  - noen forutsetninger mangler; de listes med kode (C1, C2, ...)
+function goalStatus(node, progress) {
+  if (isNodeMastered(node, progress)) {
+    return { kind: 'mastered', symbol: '✓', text: 'Avklarad' };
+  }
+  const missing = getMissingAncestors(node, progress);
+  if (!missing.length) {
+    return { kind: 'ready', symbol: '◇', text: 'Redo att läras' };
+  }
+  const codes = missing.map(m => m.goalIndex).join(', ');
+  return {
+    kind: 'blocked',
+    symbol: '⊘',
+    text: `Saknas först: ${codes}`,
+    title: missing.map(m => `${m.goalIndex}) ${m.navn}`).join('\n'),
+  };
+}
+
 function renderGoalIndexBody(body) {
   body.innerHTML = '';
+  const progress = getProgress();
+
+  const intro = document.createElement('p');
+  intro.id = 'goal-index-intro';
+  intro.textContent = 'Listan visar alla lärandemål i ämnet, sorterade efter tema, med status för vart och ett. För lärare: kryssa i de lärandemål nästa lektion ska täcka, och skapa en färdig lektionsplanering längst ner.';
+  body.appendChild(intro);
+
   themeList.forEach(({ letter, topic, nodes }) => {
     const section = document.createElement('div');
     section.className = 'goal-index-section';
@@ -646,8 +776,40 @@ function renderGoalIndexBody(body) {
 
     const ul = document.createElement('ul');
     nodes.forEach(n => {
+      const status = goalStatus(n, progress);
+
       const li = document.createElement('li');
-      li.textContent = `${n.goalIndex}) ${n.navn}`;
+      li.className = 'goal-index-item status-' + status.kind;
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'goal-pick';
+      cb.id = 'goal-pick-' + n.id;
+      cb.checked = lessonSelection.has(n.id);
+      cb.setAttribute('aria-label', `Ta med «${n.navn}» i lektionsplaneringen`);
+      cb.addEventListener('change', () => {
+        if (cb.checked) lessonSelection.add(n.id);
+        else lessonSelection.delete(n.id);
+        updateLessonPlanBar();
+      });
+      li.appendChild(cb);
+
+      const main = document.createElement('div');
+      main.className = 'goal-index-item-main';
+
+      const label = document.createElement('label');
+      label.setAttribute('for', cb.id);
+      label.className = 'goal-index-item-name';
+      label.textContent = `${n.goalIndex}) ${n.navn}`;
+      main.appendChild(label);
+
+      const badge = document.createElement('span');
+      badge.className = 'goal-index-item-status';
+      badge.textContent = `${status.symbol} ${status.text}`;
+      if (status.title) badge.title = status.title;
+      main.appendChild(badge);
+
+      li.appendChild(main);
       ul.appendChild(li);
     });
     section.appendChild(ul);
@@ -659,6 +821,7 @@ function renderGoalIndexBody(body) {
 function openGoalIndexModal() {
   const overlay = ensureGoalIndexModal();
   renderGoalIndexBody(document.getElementById('goal-index-body'));
+  updateLessonPlanBar();
   overlay.classList.add('open');
 }
 
@@ -764,6 +927,191 @@ function composeExamInstruction(nodes, count) {
   }
 
   parts.push('Visa ENDAST uppgifterna först, utan facit. Ge inte facit förrän eleven har svarat - vänta tills eleven ber om bedömning (antingen efter varje uppgift, eller efter att ha svarat på alla samtidigt). Ge då ett fullständigt facit med motivering för varje svar, en kort bedömning av vad eleven klarade, och vad hen bör öva mer på.');
+
+  return parts.join('\n\n');
+}
+
+/* ------------------------------------------------------------------ */
+/* Undervisningsopplegg: KI-instruks for én konkret undervisningsøkt    */
+/* ------------------------------------------------------------------ */
+
+// De valgte nodene, sortert slik de bør undervises: nivaa først (en
+// forutsetning har alltid lavere nivå enn det som bygger på den, også på
+// tvers av emner - se computeLevels), deretter læringsmålkode som stabil
+// tie-break.
+function getLessonSelectionNodes() {
+  return allNodes
+    .filter(n => lessonSelection.has(n.id))
+    .sort((a, b) => a.nivaa - b.nivaa || compareByGoalIndex(a, b));
+}
+
+function updateLessonPlanBar() {
+  const countLabel = document.getElementById('lesson-plan-count');
+  const btn = document.getElementById('lesson-plan-btn');
+  if (!countLabel || !btn) return;
+  const n = lessonSelection.size;
+  countLabel.textContent = n === 0
+    ? 'Inga lärandemål valda'
+    : n === 1 ? '1 lärandemål valt' : `${n} lärandemål valda`;
+  btn.disabled = n === 0;
+}
+
+// Fordeler den oppgitte lengden på økta: starter og gjenhenting har fast
+// lengde, resten deles likt mellom de valgte læringsmålene (overskytende
+// minutter går til de første målene, så summen alltid går opp). Motoren
+// regner dette ut i stedet for å overlate fordelingen til KI-en, slik at
+// læreren får en forutsigbar timeplan uansett hvilken modell hen bruker.
+function buildLessonSchedule(nodes, totalMinutes) {
+  const teachingTotal = Math.max(nodes.length, totalMinutes - LESSON_STARTER_MIN - LESSON_RECALL_MIN);
+  const base = Math.floor(teachingTotal / nodes.length);
+  const extra = teachingTotal - base * nodes.length;
+
+  const lines = [];
+  let t = 0;
+  lines.push(`${t}-${t + LESSON_STARTER_MIN} min: Starter`);
+  t += LESSON_STARTER_MIN;
+
+  nodes.forEach((node, i) => {
+    const len = base + (i < extra ? 1 : 0);
+    const diag = Math.min(LESSON_DIAGNOSTIC_MIN, Math.max(1, len - 1));
+    lines.push(`${t}-${t + len} min: Lärandemål ${i + 1} - ${node.navn}. Av dessa avsätts de sista ${diag} minuterna till den diagnostiska frågan.`);
+    t += len;
+  });
+
+  lines.push(`${t}-${t + LESSON_RECALL_MIN} min: Återkallning`);
+  t += LESSON_RECALL_MIN;
+
+  return { text: lines.join('\n'), perGoal: base, tight: base < LESSON_MIN_GOAL_BLOCK, total: t };
+}
+
+// Fast metodikk-tekst, lik for alle fag. Ligger hardkodet her (ikke i CSV
+// og ikke i config.js) på samme måte som BEGREP_TEST_GUIDANCE: dette er
+// didaktikk som gjelder på tvers av fag, ikke fagspesifikt innhold.
+const LESSON_STARTER_GUIDANCE = `BLOCK 1 - STARTER (${LESSON_STARTER_MIN} minuter)
+Skapa EN öppen uppgift som hela klassen kan börja med direkt, och som leder in mot dagens lärandemål.
+Krav på startern:
+- Den ska få plats på en enda PowerPoint-slide eller på tavlan. Skriv ut den ordagrant, precis som den ska stå där.
+- Den ska vara ÖPPEN: det ska inte finnas bara ett rätt svar, utan många möjliga svar eller många vägar fram. Eleverna ska kunna hålla på i flera minuter utan att bli "färdiga".
+- Den ska ha låg tröskel. En elev som inte kan något av det som ska läras i dag ska ändå kunna börja direkt. Det här är det svåraste kravet: startern ska INTE bygga på förkunskaper utöver det som står i förkunskapslistan ovan, och helst inte ens på allt det.
+- Den ska bjuda in till att prova, gissa, jämföra med bänkgrannen och justera.
+Ett exempel på FORMEN (inte på innehållet): "Titta på de här bråken: 1/2, 1/3, 1/4, 1/6, 1/8. Lägg ihop några av dem så att du kommer så nära 1 som möjligt."
+Skriv dessutom 2-3 meningar till läraren om hur startern leder in mot dagens lärandemål, och vad läraren ska titta efter medan eleverna arbetar.`;
+
+const LESSON_EPP_GUIDANCE = `HUVUDDELEN - ETT LÄRANDEMÅL I TAGET
+Undervisningen av varje lärandemål ska följa example-problem pair-modellen: läraren gör en uppgift, eleverna gör en motsvarande uppgift, och sedan upprepas det med en lite svårare uppgift.
+Skapa 2-3 sådana rundor per lärandemål. Varje runda består av:
+
+a) LÄRARENS UPPGIFT - en uppgift läraren gör på tavlan, färdigt uträknad med alla mellanled, skrivna som de ska stå på tavlan. Föreslå också HUR läraren ska göra den, och variera mellan rundorna. Möjliga varianter:
+   - Läraren gör hela uppgiften i FULLSTÄNDIG TYSTNAD, utan att säga ett ord, och eleverna måste efteråt förklara för bänkgrannen - eller skriva ner för sig själva - vad läraren gjorde och varför.
+   - Läraren tänker högt under tiden.
+   - Läraren gör ett medvetet felsteg som eleverna ska hitta.
+   - Läraren stannar halvvägs och låter klassen föreslå nästa steg.
+
+b) ELEVERNAS UPPGIFTER - flera uppgifter som liknar lärarens, i stigande svårighetsgrad, så att elever som blir snabbt klara har mer att ta sig an. Ge minst tre. VIKTIGT: de extra uppgifterna ska ligga I SIDLED i förhållande till kursprogressionen - samma typ av uppgift med andra tal, ny inramning eller en liten vridning - och INTE framåt mot nästa runda. Nästa, svårare steg ska läraren själv gå igenom i nästa runda; föregriper de extra uppgifterna det, förlorar nästa runda sin poäng. Markera tydligt vilken av uppgifterna läraren ska gå igenom efteråt (den enklaste). Ge facit till alla.
+
+Rundorna ska bygga uppåt: första rundan är det enklaste fallet, sista rundan ligger nära hur lärandemålet faktiskt ska behärskas.
+
+c) EGET ARBETE - efter sista rundan, tre uppgiftsset på olika nivå (t.ex. "Kom igång", "Vidare", "Utmaning") som eleverna arbetar med på egen hand. Eleverna väljer själva, eller läraren fördelar. Ge fullständigt facit till alla tre seten.`;
+
+const LESSON_BEGREP_GUIDANCE = `ANPASSNING FÖR BEGREPP
+Några av lärandemålen ovan är märkta [begrepp]. Det är deklarativ kunskap, inte en räknefärdighet, och example-problem pair-modellen ovan är skriven för räknefärdigheter. Gör därför en enkel anpassning för dessa: lärarens "uppgift" blir i stället att läraren visar upp och går igenom några exempel och icke-exempel på begreppet, och elevernas "uppgifter" blir att avgöra om nya fall är exempel på begreppet eller inte och motivera varför, eller att förklara begreppet med egna ord. Det egna arbetet blir på motsvarande sätt kvalitativt. Håll räkningen minimal och underordnad i dessa block - själva räknefärdigheten hör hemma i ett eget lärandemål längre ner i färdighetsträdet.`;
+
+const LESSON_DIAGNOSTIC_GUIDANCE = `DIAGNOSTISK FRÅGA - avsluta VARJE lärandemål med en, innan klassen går vidare
+En diagnostisk fråga är en flervalsfråga med exakt fyra alternativ, numrerade 1, 2, 3 och 4. De felaktiga alternativen ska inte vara slumpmässiga: vart och ett av dem ska motsvara en KONKRET, vanlig missuppfattning kopplad till just det här lärandemålet. Skriv på en egen rad till läraren vilken missuppfattning varje felaktigt alternativ fångar upp, så att läraren vet vad ett svar faktiskt betyder.
+Krav på frågan:
+- Den ska få plats på en slide eller på tavlan, och kunna besvaras på under 30 sekunder utan uträkning på papper.
+- Alla fyra alternativen ska se rimliga ut. Inga uppenbart tokiga alternativ - då svarar eleverna rätt utan att förstå.
+Genomförande (skriv in det i planeringen): läraren visar frågan, eleverna tänker i tystnad i 30 sekunder, och på lärarens signal svarar ALLA samtidigt genom att visa antal fingrar. Poängen är att hela klassen måste ta ställning, inte bara den som räcker upp handen.
+- Svarar så gott som alla rätt: gå direkt vidare till nästa lärandemål.
+- Är klassen delad: ge inte facit direkt. Föreslå ett sätt att ta tag i missuppfattningen på, och variera mellan lärandemålen:
+  (i) en elev per alternativ får argumentera för sitt svar medan läraren och resten av klassen bara lyssnar, utan att avbryta eller korrigera - och därefter röstar klassen på nytt;
+  (ii) eleverna diskuterar två och två med bänkgrannen i en minut och röstar på nytt;
+  (iii) eleverna går ihop i grupper efter vilket alternativ de valde, och ska enas om ett gemensamt argument före ny omröstning.
+  Först efter den nya omröstningen går läraren igenom rätt svar - och förklarar då uttryckligen varför vart och ett av de felaktiga alternativen är fel.`;
+
+const LESSON_RECALL_GUIDANCE = `SISTA BLOCKET - ÅTERKALLNING (${LESSON_RECALL_MIN} minuter)
+Avsluta lektionen med återkallning: eleverna stänger bok och anteckningar och skriver ner i sin bok allt de kommer ihåg att de lärt sig i dag. Skriv ut det konkreta besked läraren ska ge, klart att sättas på en slide eller tavlan. Ge dessutom läraren 2-3 korta hjälpfrågor hen kan skriva på tavlan om några elever inte kommer igång. Skriv också en mening om varför det här görs - att det är att hämta fram något ur minnet som fäster det, inte att läsa det igen - så att läraren kan säga det till klassen.`;
+
+const LESSON_FORMAT_GUIDANCE = `FORMAT PÅ SVARET
+Skriv planeringen som en sammanhängande plan läraren kan läsa uppifrån och ner medan hen undervisar. Använd en rubrik med minutangivelse för varje block, i samma ordning som tidsplanen ovan.
+Allt som ska visas upp för eleverna - startuppgiften, lärarens exempel, elevuppgifterna, den diagnostiska frågan och beskedet om återkallning - ska stå i ett eget, tydligt avgränsat block som börjar med "PÅ TAVLAN:" på egen rad. Innehållet i ett sådant block ska vara skrivet ordagrant som det ska stå på slide eller tavla, utan instruktioner till läraren inuti blocket. Allt annat - vad läraren ska göra och säga, facit, vad hen ska titta efter - står utanför blocken. Då kan läraren kopiera "PÅ TAVLAN"-blocken rakt in i PowerPoint.
+Ge fullständigt facit till alla uppgifter, i egna stycken märkta "Facit", alltid utanför "PÅ TAVLAN"-blocken.
+Skriv enkelt och konkret, och undvik didaktiska fackord i texten som ska visas för eleverna.`;
+
+// Setter sammen KI-instruksen for en hel undervisningsøkt. I motsetning til
+// composeInstruction() (som henvender seg til ELEVEN om én node) og
+// composeExamInstruction() (som bygger på MESTREDE noder) henvender denne
+// seg til LÆREREN, og bygger på noder som ennå ikke er mestret - de som
+// skal undervises.
+//
+// Merk et bevisst valg: forutsetningene (forfedrene til de valgte nodene)
+// antas mestret uansett hva som faktisk er huket av i treet, og det gis
+// ingen advarsel til læreren om manglende forutsetninger. En lærer som ikke
+// orker å krysse av alt ville ellers druknet i advarsler. Hvilke
+// forutsetninger som faktisk mangler, vises i stedet som status i
+// læringsmål-lista (se goalStatus).
+function composeLessonPlanInstruction(nodes, totalMinutes) {
+  const courseLabel = CONFIG.courseName || 'ämnet';
+  const schedule = buildLessonSchedule(nodes, totalMinutes);
+  const parts = [];
+
+  parts.push(`Du är en erfaren ämnesdidaktiker som ska hjälpa en LÄRARE att planera en konkret lektion i ${courseLabel}. Du talar med läraren, inte med eleven. Svara med själva lektionsplaneringen direkt - ställ inga klargörande frågor först, och inled inte med att sammanfatta den här instruktionen. Läraren kan be om justeringar efteråt.`);
+
+  parts.push('Om du har någon form av minnesfunktion mellan samtal (långtidsminne) ska du inte spara något från det här samtalet där - varken om läraren, klassen eller ämnet. Planeringen gäller bara den här enda lektionen här och nu.');
+
+  const goalList = nodes
+    .map((n, i) => {
+      const tags = [typeLabelText(n.type)];
+      if (SHOW_HJELPEMIDDEL) tags.push(hjelpemiddelKort(n.hjelpemiddel));
+      return `${i + 1}. ${n.navn} [${tags.join(', ')}]\n   ${n.beskrivelse}`;
+    })
+    .join('\n');
+  parts.push(`Lektionen är ${schedule.total} minuter lång och ska täcka följande ${nodes.length} lärandemål, i den här ordningen:\n${goalList}`);
+
+  // Forutsetningene utledes automatisk fra avhenger_av-kjeden, på samme måte
+  // som i composeInstruction() - læreren velger kun målene for økta.
+  const selectedIds = new Set(nodes.map(n => n.id));
+  const prerequisites = [];
+  const seen = new Set();
+  nodes.forEach(node => {
+    getAllAncestors(node).forEach(a => {
+      if (selectedIds.has(a.id) || seen.has(a.id)) return;
+      seen.add(a.id);
+      prerequisites.push(a);
+    });
+  });
+
+  if (prerequisites.length) {
+    const names = prerequisites.sort(compareByGoalIndex).map(a => `- ${a.navn}`).join('\n');
+    parts.push(`Eleverna har sedan tidigare gått igenom följande färdigheter och begrepp, som dagens lärandemål bygger vidare på. Utgå från det: du kan bygga på dem, använda orden fritt utan att definiera om dem, och dra in dem i både startern och exemplen.\n${names}`);
+  } else {
+    parts.push('Dagens lärandemål har inga registrerade förkunskaper i färdighetsträdet - anta att området är helt nytt för eleverna.');
+  }
+
+  parts.push(`Följ den här tidsplanen, och skriv in minutangivelsen i planeringen för varje block:\n${schedule.text}`);
+
+  if (schedule.tight) {
+    parts.push(`OBS: med ${nodes.length} lärandemål på ${schedule.total} minuter blir det bara omkring ${schedule.perGoal} minuter per lärandemål. Det är för lite för att hinna med både example-problem pair-rundor, eget arbete och en diagnostisk fråga. Inled därför planeringen med en kort, vänlig anmärkning till läraren om det, och föreslå konkret vilket eller vilka lärandemål som bör flyttas till en senare lektion. Skapa sedan en fullständig planering för alla målen ändå, enligt tidsplanen ovan.`);
+  }
+
+  parts.push(LESSON_STARTER_GUIDANCE);
+  parts.push(LESSON_EPP_GUIDANCE);
+  if (nodes.some(n => n.type === 'begrep')) parts.push(LESSON_BEGREP_GUIDANCE);
+  parts.push(LESSON_DIAGNOSTIC_GUIDANCE);
+  parts.push(LESSON_RECALL_GUIDANCE);
+
+  if (SHOW_HJELPEMIDDEL) {
+    const hasDel1 = nodes.some(n => n.hjelpemiddel === 'del1' || n.hjelpemiddel === 'begge');
+    const hasDel2 = nodes.some(n => n.hjelpemiddel === 'del2' || n.hjelpemiddel === 'begge');
+    if (hasDel1 || hasDel2) {
+      const hjelpemiddelParts = [];
+      if (hasDel1) hjelpemiddelParts.push(composeHjelpemiddelContext('del1'));
+      if (hasDel2) hjelpemiddelParts.push(composeHjelpemiddelContext('del2'));
+      parts.push(`Håll dig till rätt hjälpmedelsanvändning i uppgifterna du skapar, efter vilken del varje lärandemål hör till (märkt [D1]/[D2] i listan ovan):\n${hjelpemiddelParts.join('\n')}`);
+    }
+  }
+
+  parts.push(LESSON_FORMAT_GUIDANCE);
 
   return parts.join('\n\n');
 }
