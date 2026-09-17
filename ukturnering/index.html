@@ -192,6 +192,41 @@
       z-index: 10;
     }
 
+    /* Kampen som ikke er avgjort ennå: vinnerkortet står tomt */
+    .card.pending-card .card-left img {
+      filter: grayscale(1);
+      opacity: 0.35;
+    }
+    .card.pending-card .card-name {
+      opacity: 0.4;
+      font-size: 120px;
+    }
+
+    /* ─── Ramme rundt kampen som pågår nå ──────────────── */
+    #active-highlight {
+      position: absolute;
+      border: 16px dashed #d1483c;
+      border-radius: 60px;
+      background: rgba(209, 72, 60, 0.05);
+      pointer-events: none;
+    }
+    #active-highlight .active-label {
+      position: absolute;
+      left: 50%;
+      bottom: 100%;
+      transform: translateX(-50%);
+      margin-bottom: 40px;
+      padding: 18px 60px;
+      background: #d1483c;
+      color: #fff;
+      border-radius: 18px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 110px;
+      line-height: 1;
+      letter-spacing: 10px;
+      white-space: nowrap;
+    }
+
     /* Rainbow / Gold top-edge accent */
     .card::before {
       content: '';
@@ -406,7 +441,18 @@
     trophyEmoji: '🏆'
   };
 
+  // Kampen som pågår nå. Rammen tegnes rundt disse kortene — de to som møtes
+  // og vinnerplassen de kjemper om. Oppdater når neste duell starter.
+  const ACTIVE_MATCH = {
+    cards: ['L-R1-17', 'L-R1-18', 'L-R2-9'],
+    label: 'PÅGÅR NÅ'
+  };
+
+  // Neutral silhouette used for cards with no hero yet (inline so it can never 404).
+  const BLANK_PORTRAIT = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20400%22%3E%3Crect%20width%3D%22400%22%20height%3D%22400%22%20fill%3D%22%23cfc4b6%22%2F%3E%3Ccircle%20cx%3D%22200%22%20cy%3D%22155%22%20r%3D%2272%22%20fill%3D%22%23a89c8c%22%2F%3E%3Cpath%20d%3D%22M60%20400c0-82%2063-132%20140-132s140%2050%20140%20132z%22%20fill%3D%22%23a89c8c%22%2F%3E%3C%2Fsvg%3E";
+
   const TOURNAMENT_DATA = {
+    /* ---------- Runde 1, venstre side ---------- */
     "L-R1-1": {
       name: "The Flash",
       imageUrl: "https://tse4.mm.bing.net/th/id/OIP.70L_Dyk0K6a0w1aBn9QN6wHaDt?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",
@@ -416,33 +462,18 @@
         scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13040153-5-the-flash-raske-dyr-og-tidrommet.js?container_id=buzzsprout-player-13040153&player=small"
       }
     },
-    // Example right side card
     "L-R1-2": {
       name: "Doctor Octopus",
-      imageUrl: "https://th.bing.com/th/id/R.582df62c9d26177f07d6b8fb830855f9?rik=PSv4TUy2Csq%2fbQ&pid=ImgRaw&r=0", // Note: Insert Bane image
+      imageUrl: "https://th.bing.com/th/id/R.582df62c9d26177f07d6b8fb830855f9?rik=PSv4TUy2Csq%2fbQ&pid=ImgRaw&r=0",
       kappe: { K: 18, A: 18, P1: 17, P2: 3, E: 13 },
       podcast: {
         containerId: "buzzsprout-player-17623515",
         scriptSrc: "https://www.buzzsprout.com/2188463/episodes/17623515-58-doctor-octopus-blekkspruter-og-hjernebolger.js?container_id=buzzsprout-player-17623515&player=small"
       }
     },
-    // Example: Left Round 2 (This creates nodes before it)
-    "L-R2-1": {
-     name: "The Flash",
-     imageUrl: "https://tse4.mm.bing.net/th/id/OIP.70L_Dyk0K6a0w1aBn9QN6wHaDt?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",
-     kappe: { K: 11, A: 6, P1: 12, P2: 14, E: 18 },
-     podcast: {
-      containerId: "buzzsprout-player-19497013",
-       scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19497013-82-5-vinner-av-doctor-octopus-vs-the-flash.js?container_id=buzzsprout-player-19497013&player=small"
-     },
-     battlePodcast: {
-       containerId: "buzzsprout-player-19462772",
-       scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19462772-82-doctor-octopus-vs-the-flash-morderisk-ki-og-menneskelig-toppfart.js?container_id=buzzsprout-player-19462772&player=small"
-     }
-    },
     "L-R1-3": {
       name: "The Thing",
-      imageUrl: "https://static.wikia.nocookie.net/marvelcinematicuniverse/images/2/2a/Thing_Infobox.png/revision/latest?cb=20250716011850",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/658-thing.jpg",
       kappe: { K: 8, A: 14, P1: 14, P2: 2, E: 8 },
       podcast: {
         containerId: "buzzsprout-player-13800593",
@@ -458,19 +489,260 @@
         scriptSrc: "https://www.buzzsprout.com/2188463/episodes/16567635-45-mystique-metamaterialer-og-biologiske-printere.js?container_id=buzzsprout-player-16567635&player=small"
       }
     },
-    "L-R2-2": {
-      name: "Mystique",
-      imageUrl: "https://www.zbrushcentral.com/uploads/default/original/4X/1/2/1/121148f7df5793960ca0fe160ddb5019757cdd60.jpeg",
-      kappe: { K: 20, A: 19, P1: 18, P2: 20, E: 16 },
+    "L-R1-5": {
+      name: "Aquaman 2",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/38-aquaman.jpg",
+      kappe: { K: 18, A: 15, P1: 12, P2: 9, E: 15 },
       podcast: {
-        containerId: "buzzsprout-player-19778050",
-        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19778050-86-5-vinneren-av-the-thing-vs-mystique-med-gard-lilledal-andersen.js?container_id=buzzsprout-player-19778050&player=small"
-      },
-      battlePodcast: {
-        containerId: "buzzsprout-player-19742123",
-        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19742123-86-the-thing-vs-mystique-med-gard-lilledal-andersen-steinhard-hud-og-skuespill.js?container_id=buzzsprout-player-19742123&player=small"
+        containerId: "buzzsprout-player-16091754",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/16091754-39-aquaman-2-med-eystein-hellstrom-hoddevik-hard-hud-gront-blod-trykk-og-maur.js?container_id=buzzsprout-player-16091754&player=small"
       }
     },
+    "L-R1-6": {
+      name: "Groot",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/303-groot.jpg",
+      kappe: { K: 16, A: 19, P1: 15, P2: 4, E: 12 },
+      podcast: {
+        containerId: "buzzsprout-player-13976502",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13976502-18-groot-traer-og-elastisitet.js?container_id=buzzsprout-player-13976502&player=small"
+      }
+    },
+    "L-R1-7": {
+      name: "Julenissen 3",
+      imageUrl: "https://static.wikia.nocookie.net/marveldatabase/images/6/60/Santa_Claus_%28Earth-616%29_from_Deadpool_Vol_6_7_001.png",
+      kappe: { K: 17, A: 20, P1: 8, P2: 13, E: 20 },
+      podcast: {
+        containerId: "buzzsprout-player-18410969",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/18410969-68-julenissen-3-nuptielle-gaver-og-kvantedatamaskiner.js?container_id=buzzsprout-player-18410969&player=small"
+      }
+    },
+    "L-R1-8": {
+      name: "One Punch Man",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/502-one-punch-man.jpg",
+      kappe: { K: 15, A: 4, P1: 3, P2: 14, E: 19 },
+      podcast: {
+        containerId: "buzzsprout-player-14457211",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/14457211-23-one-punch-man-sjoknelere-bro-science-og-newtons-lover.js?container_id=buzzsprout-player-14457211&player=small"
+      }
+    },
+    "L-R1-9": {
+      name: "Batman",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/70-batman.jpg",
+      kappe: { K: 18, A: 17, P1: 18, P2: 17, E: 7 },
+      podcast: {
+        containerId: "buzzsprout-player-17469807",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/17469807-56-batman-teknologiske-dingser-og-flag-kraker.js?container_id=buzzsprout-player-17469807&player=small"
+      }
+    },
+    "L-R1-10": {
+      name: "The Riddler",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/558-riddler.jpg",
+      kappe: { K: 12, A: 14, P1: 19, P2: 3, E: 8 },
+      podcast: {
+        containerId: "buzzsprout-player-14993207",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/14993207-29-the-riddler-med-anne-brugard-og-john-christian-ottem-gode-notter-smarte-dyr-og-spillteori.js?container_id=buzzsprout-player-14993207&player=small"
+      }
+    },
+    "L-R1-11": {
+      name: "Ultron",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/680-ultron.jpg",
+      kappe: { K: 16, A: 17, P1: 7, P2: 15, E: 19 },
+      podcast: {
+        containerId: "buzzsprout-player-15941295",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/15941295-37-ultron-med-ishita-barua-kunstig-intelligens-soppnettverk-og-chatgpt.js?container_id=buzzsprout-player-15941295&player=small"
+      }
+    },
+    "L-R1-12": {
+      name: "Clayface",
+      imageUrl: "https://static.wikia.nocookie.net/marvel_dc/images/d/d8/Basil_Karlo_Bruce_Wayne_Not_Super_001.jpg",
+      kappe: { K: 13, A: 18, P1: 7, P2: 15, E: 8 },
+      podcast: {
+        containerId: "buzzsprout-player-19248436",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19248436-79-clayface-topologi-og-slimsopp.js?container_id=buzzsprout-player-19248436&player=small"
+      }
+    },
+    "L-R1-13": {
+      name: "Vision",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/697-vision.jpg",
+      kappe: { K: 16, A: 18, P1: 3, P2: 19, E: 18 },
+      podcast: {
+        containerId: "buzzsprout-player-18469570",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/18469570-69-vision-ki-vidar-even.js?container_id=buzzsprout-player-18469570&player=small"
+      }
+    },
+    "L-R1-14": {
+      name: "Black Bolt",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/96-black-bolt.jpg",
+      kappe: { K: 9, A: 16, P1: 14, P2: 3, E: 19 },
+      podcast: {
+        containerId: "buzzsprout-player-14057514",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/14057514-19-black-bolt-med-inge-bremnes-stemmeteknikk-lyd-og-brakete-dyr.js?container_id=buzzsprout-player-14057514&player=small"
+      }
+    },
+    "L-R1-15": {
+      name: "Wonder Woman",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/720-wonder-woman.jpg",
+      kappe: { K: 18, A: 16, P1: 15, P2: 18, E: 17 },
+      podcast: {
+        containerId: "buzzsprout-player-14284455",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/14284455-21-wonder-woman-med-marianne-reinertsen-lassojuss-logndetektorer-og-pistolreker.js?container_id=buzzsprout-player-14284455&player=small"
+      }
+    },
+    "L-R1-16": {
+      name: "Professor X",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/527-professor-x.jpg",
+      kappe: { K: 13, A: 11, P1: 6, P2: 12, E: 10 },
+      podcast: {
+        containerId: "buzzsprout-player-14877523",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/14877523-28-professor-x-live-mutantgener-og-fysikken-bak-hjernekontroll.js?container_id=buzzsprout-player-14877523&player=small"
+      }
+    },
+    "L-R1-17": {
+      name: "Cyclops",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/196-cyclops.jpg",
+      kappe: { K: 8, A: 12, P1: 16, P2: 3, E: 14 },
+      podcast: {
+        containerId: "buzzsprout-player-15159110",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/15159110-31-cyclops-dyr-som-skyter-laser-og-rubinkvarts.js?container_id=buzzsprout-player-15159110&player=small"
+      }
+    },
+    "L-R1-18": {
+      name: "Wolverine",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/717-wolverine.jpg",
+      kappe: { K: 18, A: 20, P1: 17, P2: 13, E: 12 },
+      podcast: {
+        containerId: "buzzsprout-player-14367215",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/14367215-22-wolverine-metaller-dislokasjoner-og-biologisk-regenerering.js?container_id=buzzsprout-player-14367215&player=small"
+      }
+    },
+    "L-R1-19": {
+      name: "Super Mario",
+      imageUrl: "https://mario.wiki.gallery/images/0/0d/MarioAlternateJamboreeRender.png",
+      kappe: { K: 17, A: 17, P1: 14, P2: 10, E: 16 },
+      podcast: {
+        containerId: "buzzsprout-player-18868127",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/18868127-74-super-mario-med-aslak-maurstad-gaming-laering-dobbelthopp-og-sopp.js?container_id=buzzsprout-player-18868127&player=small"
+      }
+    },
+    "L-R1-20": {
+      name: "Ninja Turtles",
+      imageUrl: "https://static.wikia.nocookie.net/tmnt/images/b/be/Tmnt101.jpg",
+      kappe: { K: 14, A: 18, P1: 14, P2: 4, E: 13 },
+      podcast: {
+        containerId: "buzzsprout-player-16907421",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/16907421-49-teenage-mutant-ninja-turtles-vapen-og-skilpadder.js?container_id=buzzsprout-player-16907421&player=small"
+      }
+    },
+    "L-R1-21": {
+      name: "Madame Web",
+      imageUrl: "https://static.wikia.nocookie.net/marveldatabase/images/9/9e/Cassandra_Webb_%28Earth-616%29_from_Prowler_Vol_2_1_001.jpg",
+      kappe: { K: 18, A: 15, P1: 14, P2: 12, E: 13 },
+      podcast: {
+        containerId: "buzzsprout-player-14819088",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/14819088-27-madame-web-dyr-og-mennesker-som-se-fremtiden.js?container_id=buzzsprout-player-14819088&player=small"
+      }
+    },
+    "L-R1-22": {
+      name: "Poison Ivy",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/522-poison-ivy.jpg",
+      kappe: { K: 17, A: 19, P1: 10, P2: 4, E: 14 },
+      podcast: {
+        containerId: "buzzsprout-player-13201287",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13201287-8-poison-ivy-giftige-planter.js?container_id=buzzsprout-player-13201287&player=small"
+      }
+    },
+    "L-R1-23": {
+      name: "Tor",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/659-thor.jpg",
+      kappe: { K: 16, A: 13, P1: 14, P2: 16, E: 16 },
+      podcast: {
+        containerId: "buzzsprout-player-13871206",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13871206-16-tor-lyn-og-farene-av-a-bli-truffet-av-det-live.js?container_id=buzzsprout-player-13871206&player=small"
+      }
+    },
+    "L-R1-24": {
+      name: "Rocket",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/566-rocket-raccoon.jpg",
+      kappe: { K: 15, A: 17, P1: 17, P2: 2, E: 7 },
+      podcast: {
+        containerId: "buzzsprout-player-18626753",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/18626753-71-rocket-rekyl-og-vaskebjorn.js?container_id=buzzsprout-player-18626753&player=small"
+      }
+    },
+    "L-R1-25": {
+      name: "Deadpool",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/213-deadpool.jpg",
+      kappe: { K: 20, A: 19, P1: 12, P2: 9, E: 15 },
+      podcast: {
+        containerId: "buzzsprout-player-17696888",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/17696888-59-deadpool-dimensjoner-og-axolotls.js?container_id=buzzsprout-player-17696888&player=small"
+      }
+    },
+    "L-R1-26": {
+      name: "Captain America",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/149-captain-america.jpg",
+      kappe: { K: 8, A: 5, P1: 18, P2: 16, E: 12 },
+      podcast: {
+        containerId: "buzzsprout-player-13368139",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13368139-9-captain-america-sprettballer-og-nedfryste-frosker.js?container_id=buzzsprout-player-13368139&player=small"
+      }
+    },
+    "L-R1-27": {
+      name: "Dr Strange",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/226-doctor-strange.jpg",
+      kappe: { K: 13, A: 14, P1: 7, P2: 16, E: 20 },
+      podcast: {
+        containerId: "buzzsprout-player-16189580",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/16189580-40-dr-strange-ormhull.js?container_id=buzzsprout-player-16189580&player=small"
+      }
+    },
+    "L-R1-28": {
+      name: "Loke",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/414-loki.jpg",
+      kappe: { K: 17, A: 12, P1: 9, P2: 12, E: 15 },
+      podcast: {
+        containerId: "buzzsprout-player-13698055",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13698055-14-loke-tidsparadokser-og-illusoriske-dyr.js?container_id=buzzsprout-player-13698055&player=small"
+      }
+    },
+    "L-R1-29": {
+      name: "Ghost",
+      imageUrl: "https://static.wikia.nocookie.net/marveldatabase/images/2/21/Ghost_%28Earth-616%29_from_Amazing_Spider-Man_Vol_3_16_001.jpg",
+      kappe: { K: 15, A: 15, P1: 12, P2: 11, E: 16 },
+      podcast: {
+        containerId: "buzzsprout-player-18101353",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/18101353-64-ghost-utspredte-dyr-og-kvantegreier-igjen.js?container_id=buzzsprout-player-18101353&player=small"
+      }
+    },
+    "L-R1-30": {
+      name: "Kirby",
+      imageUrl: "https://cdn.wikirby.com/0/0d/KARs_Kirby.png",
+      kappe: { K: 18, A: 18, P1: 10, P2: 10, E: 13 },
+      podcast: {
+        containerId: "buzzsprout-player-18708868",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/18708868-72-kirby-nakensnegler-og-luftballonger.js?container_id=buzzsprout-player-18708868&player=small"
+      }
+    },
+    "L-R1-31": {
+      name: "Magneto",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/423-magneto.jpg",
+      kappe: { K: 20, A: 17, P1: 18, P2: 18, E: 18 },
+      podcast: {
+        containerId: "buzzsprout-player-13515438",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13515438-12-magneto-elektromagnetiske-dyr.js?container_id=buzzsprout-player-13515438&player=small"
+      }
+    },
+    "L-R1-32": {
+      name: "Cat Woman",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/165-catwoman.jpg",
+      kappe: { K: 18, A: 7, P1: 18, P2: 3, E: 1 },
+      podcast: {
+        containerId: "buzzsprout-player-13107135",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13107135-6-catwoman-katter-og-hvorfor-de-alltid-lander-pa-beina.js?container_id=buzzsprout-player-13107135&player=small"
+      }
+    },
+
+    /* ---------- Runde 1, høyre side ---------- */
     "R-R1-1": {
       name: "Dr Manhattan",
       imageUrl: "https://www.refinery29.com/images/8597102.jpg",
@@ -489,6 +761,314 @@
         scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19171008-78-doctor-doom-dna-viljestyrke-og-mork-energi.js?container_id=buzzsprout-player-19171008&player=small"
       }
     },
+    "R-R1-3": {
+      name: "Venom",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/687-venom.jpg",
+      kappe: { K: 19, A: 19, P1: 14, P2: 3, E: 14 },
+      podcast: {
+        containerId: "buzzsprout-player-16018139",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/16018139-38-venom-parasitter-og-magnetiske-materialer.js?container_id=buzzsprout-player-16018139&player=small"
+      }
+    },
+    "R-R1-4": {
+      name: "Invisible Girl",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/344-invisible-woman.jpg",
+      kappe: { K: 12, A: 13, P1: 4, P2: 18, E: 20 },
+      podcast: {
+        containerId: "buzzsprout-player-17321633",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/17321633-54-invisible-girl-med-anja-royne-lysbrytning-dyr-som-forsvinner-og-cerenkov-straling.js?container_id=buzzsprout-player-17321633&player=small"
+      }
+    },
+    "R-R1-5": {
+      name: "Mr Fantastic",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/456-mister-fantastic.jpg",
+      kappe: { K: 11, A: 14, P1: 13, P2: 20, E: 11 },
+      podcast: {
+        containerId: "buzzsprout-player-17227626",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/17227626-53-mister-fantastic-med-pia-ve-dahlen-dyr-som-strekker-seg-supermaterialer-og-termofysikk.js?container_id=buzzsprout-player-17227626&player=small"
+      }
+    },
+    "R-R1-6": {
+      name: "Spider-Man",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/620-spider-man.jpg",
+      kappe: { K: 18, A: 17, P1: 14, P2: 8, E: 10 },
+      podcast: {
+        containerId: "buzzsprout-player-12829964",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/12829964-1-spider-man-edderkopper-og-materialstyrke.js?container_id=buzzsprout-player-12829964&player=small"
+      }
+    },
+    "R-R1-7": {
+      name: "Human Torch",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/333-human-torch.jpg",
+      kappe: { K: 11, A: 17, P1: 14, P2: 15, E: 19 },
+      podcast: {
+        containerId: "buzzsprout-player-17157443",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/17157443-52-human-torch-med-andreas-wahl-ild-flammer-og-prompeporer.js?container_id=buzzsprout-player-17157443&player=small"
+      }
+    },
+    "R-R1-8": {
+      name: "Starlight",
+      imageUrl: "https://static.wikia.nocookie.net/amazons-the-boys/images/2/21/Annie_January_Comic.jpg",
+      kappe: { K: 8, A: 18, P1: 8, P2: 7, E: 15 },
+      podcast: {
+        containerId: "buzzsprout-player-15697856",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/15697856-34-starlight-den-sjukeste-vepsen-og-det-sterkeste-lyset.js?container_id=buzzsprout-player-15697856&player=small"
+      }
+    },
+    "R-R1-9": {
+      name: "Scarlet Witch",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/579-scarlet-witch.jpg",
+      kappe: { K: 15, A: 12, P1: 9, P2: 20, E: 20 },
+      podcast: {
+        containerId: "buzzsprout-player-18015243",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/18015243-63-scarlet-witch-informasjonsteori-og-stamceller.js?container_id=buzzsprout-player-18015243&player=small"
+      }
+    },
+    "R-R1-10": {
+      name: "Supermann",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/644-superman.jpg",
+      kappe: { K: 7, A: 5, P1: 4, P2: 20, E: 20 },
+      podcast: {
+        containerId: "buzzsprout-player-12959204",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/12959204-4-supermann-astrofysikk-og-romvesenbiologi.js?container_id=buzzsprout-player-12959204&player=small"
+      }
+    },
+    "R-R1-11": {
+      name: "Iron Man",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/346-iron-man.jpg",
+      kappe: { K: 17, A: 16, P1: 20, P2: 13, E: 8 },
+      podcast: {
+        containerId: "buzzsprout-player-14546612",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/14546612-24-iron-man-fisjon-fusjon-og-vulkansnegler.js?container_id=buzzsprout-player-14546612&player=small"
+      }
+    },
+    "R-R1-12": {
+      name: "Frankensteins monster",
+      imageUrl: "https://static.wikia.nocookie.net/marveldatabase/images/6/60/Frankenstein%27s_Monster_%28Earth-616%29_from_Legion_of_Monsters_Vol_1_1_cover.jpg",
+      kappe: { K: 16, A: 20, P1: 12, P2: 2, E: 11 },
+      podcast: {
+        containerId: "buzzsprout-player-16737680",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/16737680-47-frankensteins-monster-med-ida-kathrine-gravensteen-rettsmedisin-hjertestartere-og-gode-dyredeler.js?container_id=buzzsprout-player-16737680&player=small"
+      }
+    },
+    "R-R1-13": {
+      name: "Silver Surfer",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/598-silver-surfer.jpg",
+      kappe: { K: 18, A: 18, P1: 13, P2: 8, E: 17 },
+      podcast: {
+        containerId: "buzzsprout-player-19394866",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19394866-81-silver-surfer-solv-bjornedyr-og-gravitasjonsbolger.js?container_id=buzzsprout-player-19394866&player=small"
+      }
+    },
+    "R-R1-14": {
+      name: "Ellie Williams",
+      imageUrl: "https://static.wikia.nocookie.net/thelastofus/images/7/70/AD_-_Bus_window.png",
+      kappe: { K: 18, A: 18, P1: 15, P2: 3, E: 8 },
+      podcast: {
+        containerId: "buzzsprout-player-18789441",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/18789441-73-ellie-med-tone-f-gregers-vaksiner-sopp-og-smitte.js?container_id=buzzsprout-player-18789441&player=small"
+      }
+    },
+    "R-R1-15": {
+      name: "Nightcrawler",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/490-nightcrawler.jpg",
+      kappe: { K: 19, A: 15, P1: 14, P2: 16, E: 18 },
+      podcast: {
+        containerId: "buzzsprout-player-15316032",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/15316032-33-nightcrawler-teleportering-og-blafarge.js?container_id=buzzsprout-player-15316032&player=small"
+      }
+    },
+    "R-R1-16": {
+      name: "Scorpion",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/581-scorpion.jpg",
+      kappe: { K: 12, A: 11, P1: 19, P2: 3, E: 4 },
+      podcast: {
+        containerId: "buzzsprout-player-13448622",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13448622-11-scorpion-med-nora-uggerud-syre-vannkanoner-og-skorpioner.js?container_id=buzzsprout-player-13448622&player=small"
+      }
+    },
+    "R-R1-17": {
+      name: "Storm",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/638-storm.jpg",
+      kappe: { K: 20, A: 10, P1: 13, P2: 16, E: 20 },
+      podcast: {
+        containerId: "buzzsprout-player-15064920",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/15064920-30-storm-vaerkontroll-og-regnskog.js?container_id=buzzsprout-player-15064920&player=small"
+      }
+    },
+    "R-R1-18": {
+      name: "Rogue",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/567-rogue.jpg",
+      kappe: { K: 17, A: 20, P1: 10, P2: 0, E: 8 },
+      podcast: {
+        containerId: "buzzsprout-player-15237438",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/15237438-32-rogue-induksjon-og-stjeling-av-energi.js?container_id=buzzsprout-player-15237438&player=small"
+      }
+    },
+    "R-R1-19": {
+      name: "Hell Cow",
+      imageUrl: "https://static.wikia.nocookie.net/marveldatabase/images/0/03/Bessie_%28Earth-616%29_from_Deadpool_Team_Up_Vol_2_885_0001.jpg",
+      kappe: { K: 20, A: 17, P1: 17, P2: 4, E: 15 },
+      podcast: {
+        containerId: "buzzsprout-player-13625989",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13625989-13-hell-cow-med-kirsti-winnberg-kyr-blodsugende-dyr-og-effektive-fly.js?container_id=buzzsprout-player-13625989&player=small"
+      }
+    },
+    "R-R1-20": {
+      name: "Pikachu",
+      imageUrl: "https://static.wikia.nocookie.net/pokemon/images/4/4a/0025Pikachu.png",
+      kappe: { K: 14, A: 17, P1: 15, P2: 4, E: 13 },
+      podcast: {
+        containerId: "buzzsprout-player-16827489",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/16827489-48-pikachu-pokemon-som-dyr-og-statisk-elektrisitet.js?container_id=buzzsprout-player-16827489&player=small"
+      }
+    },
+    "R-R1-21": {
+      name: "The Joker",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/370-joker.jpg",
+      kappe: { K: 20, A: 19, P1: 20, P2: 4, E: 8 },
+      podcast: {
+        containerId: "buzzsprout-player-15858826",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/15858826-36-the-joker-med-kristopher-schau-komedie-hyener-og-entropi.js?container_id=buzzsprout-player-15858826&player=small"
+      }
+    },
+    "R-R1-22": {
+      name: "Powerpuffjentene",
+      imageUrl: "https://static.wikia.nocookie.net/powerpuff/images/4/48/Ppg-2016.png",
+      kappe: { K: 18, A: 14, P1: 4, P2: 9, E: 20 },
+      podcast: {
+        containerId: "buzzsprout-player-17859214",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/17859214-61-powerpuff-jentene-liv-skalering-og-kjemikalie-x.js?container_id=buzzsprout-player-17859214&player=small"
+      }
+    },
+    "R-R1-23": {
+      name: "Green Lantern",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/306-hal-jordan.jpg",
+      kappe: { K: 16, A: 17, P1: 7, P2: 15, E: 20 },
+      podcast: {
+        containerId: "buzzsprout-player-14638063",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/14638063-25-green-lantern-med-halvor-hoen-hval-batterier-farger-folelser-og-plancks-konstant.js?container_id=buzzsprout-player-14638063&player=small"
+      }
+    },
+    "R-R1-24": {
+      name: "Påskeharen 2",
+      imageUrl: "https://static.wikia.nocookie.net/riseoftheguardians/images/9/9d/Bunnymund.jpg",
+      kappe: { K: 15, A: 14, P1: 17, P2: 5, E: 8 },
+      podcast: {
+        containerId: "buzzsprout-player-18949587",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/18949587-75-paskeharen-2-med-surprise-eggspert-gjest-egg.js?container_id=buzzsprout-player-18949587&player=small"
+      }
+    },
+    "R-R1-25": {
+      name: "Phone Ranger",
+      imageUrl: "https://static.wikia.nocookie.net/marveldatabase/images/b/bb/Stewart_Cadwall_%28Earth-616%29_from_Marvel_Legacy_The_1980s_Handbook_Vol_1_1_001.jpg",
+      kappe: { K: 17, A: 20, P1: 17, P2: 6, E: 15 },
+      podcast: {
+        containerId: "buzzsprout-player-19097135",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19097135-77-phone-ranger-med-kristopher-schau-telekommunikasjon-og-dyreovervakning.js?container_id=buzzsprout-player-19097135&player=small"
+      }
+    },
+    "R-R1-26": {
+      name: "Hulken",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/332-hulk.jpg",
+      kappe: { K: 16, A: 16, P1: 10, P2: 0, E: 17 },
+      podcast: {
+        containerId: "buzzsprout-player-13201272",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13201272-7-hulken-sterke-dyr-og-gammastraling.js?container_id=buzzsprout-player-13201272&player=small"
+      }
+    },
+    "R-R1-27": {
+      name: "Obi-Wan Kenobi",
+      imageUrl: "https://static.wikia.nocookie.net/starwars/images/2/2e/BenKenobiForceGhostLuke-JvS.jpg",
+      kappe: { K: 17, A: 8, P1: 12, P2: 18, E: 15 },
+      podcast: {
+        containerId: "buzzsprout-player-16483548",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/16483548-44-obi-wan-kenobi-lasersverd-og-levende-krystaller.js?container_id=buzzsprout-player-16483548&player=small"
+      }
+    },
+    "R-R1-28": {
+      name: "Blue Beetle",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/126-blue-beetle-iii.jpg",
+      kappe: { K: 14, A: 4, P1: 13, P2: 19, E: 15 },
+      podcast: {
+        containerId: "buzzsprout-player-13421461",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13421461-10-blue-beetle-biller-og-selv-konstruksjon.js?container_id=buzzsprout-player-13421461&player=small"
+      }
+    },
+    "R-R1-29": {
+      name: "Ant-Man",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/30-ant-man.jpg",
+      kappe: { K: 6, A: 15, P1: 14, P2: 19, E: 17 },
+      podcast: {
+        containerId: "buzzsprout-player-12872954",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/12872954-2-ant-man-maur-og-partikkelfysikk.js?container_id=buzzsprout-player-12872954&player=small"
+      }
+    },
+    "R-R1-30": {
+      name: "Hoppekreps",
+      imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Oczlik_%28Cyclops%29_-_samica.jpg/960px-Oczlik_%28Cyclops%29_-_samica.jpg",
+      kappe: { K: 17, A: 10, P1: 20, P2: 7, E: 11 },
+      podcast: {
+        containerId: "buzzsprout-player-19019437",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19019437-76-hoppekrepsen-turbulens-og-svommebart.js?container_id=buzzsprout-player-19019437&player=small"
+      }
+    },
+    "R-R1-31": {
+      name: "Daredevil",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/201-daredevil.jpg",
+      kappe: { K: 18, A: 20, P1: 19, P2: 14, E: 20 },
+      podcast: {
+        containerId: "buzzsprout-player-18178733",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/18178733-65-daredevil-med-torfinn-katla-opedal-ekkolokasjon.js?container_id=buzzsprout-player-18178733&player=small"
+      }
+    },
+    "R-R1-32": {
+      name: "Captain Marvel",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/157-captain-marvel.jpg",
+      kappe: { K: 4, A: 3, P1: 4, P2: 18, E: 19 },
+      podcast: {
+        containerId: "buzzsprout-player-13936164",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/13936164-17-captain-marvel-energi-og-verdensromlevedyktige-dyr.js?container_id=buzzsprout-player-13936164&player=small"
+      }
+    },
+
+    /* ---------- Runde 2 (vinnere + duell-episoder) ---------- */
+    "L-R2-9": {
+      name: "?",
+      imageUrl: BLANK_PORTRAIT,
+      kappe: { K: 0, A: 0, P1: 0, P2: 0, E: 0 },
+      pending: true,
+      battlePodcast: {
+        containerId: "buzzsprout-player-19800819",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19800819-87-wolverine-vs-cyclops-strontium-og-laserlys.js?container_id=buzzsprout-player-19800819&player=small"
+      }
+    },
+    "L-R2-1": {
+      name: "The Flash",
+      imageUrl: "https://tse4.mm.bing.net/th/id/OIP.70L_Dyk0K6a0w1aBn9QN6wHaDt?r=0&rs=1&pid=ImgDetMain&o=7&rm=3",
+      kappe: { K: 11, A: 6, P1: 12, P2: 14, E: 18 },
+      podcast: {
+        containerId: "buzzsprout-player-19497013",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19497013-82-5-vinner-av-doctor-octopus-vs-the-flash.js?container_id=buzzsprout-player-19497013&player=small"
+      },
+      battlePodcast: {
+        containerId: "buzzsprout-player-19462772",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19462772-82-doctor-octopus-vs-the-flash-morderisk-ki-og-menneskelig-toppfart.js?container_id=buzzsprout-player-19462772&player=small"
+      }
+    },
+    "L-R2-2": {
+      name: "Mystique",
+      imageUrl: "https://www.zbrushcentral.com/uploads/default/original/4X/1/2/1/121148f7df5793960ca0fe160ddb5019757cdd60.jpeg",
+      kappe: { K: 20, A: 19, P1: 18, P2: 20, E: 16 },
+      podcast: {
+        containerId: "buzzsprout-player-19778050",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19778050-86-5-vinneren-av-the-thing-vs-mystique-med-gard-lilledal-andersen.js?container_id=buzzsprout-player-19778050&player=small"
+      },
+      battlePodcast: {
+        containerId: "buzzsprout-player-19742123",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19742123-86-the-thing-vs-mystique-med-gard-lilledal-andersen-steinhard-hud-og-skuespill.js?container_id=buzzsprout-player-19742123&player=small"
+      }
+    },
     "R-R2-1": {
       name: "Dr Manhattan",
       imageUrl: "https://www.refinery29.com/images/8597102.jpg",
@@ -502,6 +1082,7 @@
         scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19524801-83-dr-manhattan-vs-dr-doom-radioaktiv-hudkrem-og-viljestyrke.js?container_id=buzzsprout-player-19524801&player=small"
       }
     },
+
     // The Final Bracket Winner
     //"FINAL": {
     //  name: "Champion",
@@ -541,10 +1122,11 @@
 
   function getCardData(id) {
     if (TOURNAMENT_DATA[id]) return TOURNAMENT_DATA[id];
-    // Default placeholder
+    // Default placeholder. The image is an inline SVG rather than an external
+    // placeholder service, so undecided slots never show a broken image.
     return {
       name: id,
-      imageUrl: `https://via.placeholder.com/400?text=${id}`,
+      imageUrl: BLANK_PORTRAIT,
       kappe: { K: 5, A: 5, P1: 5, P2: 5, E: 5 },
       podcast: null // No iframe by default to keep the DOM light
     };
@@ -554,6 +1136,7 @@
     const card = mk('div', { class: 'card', id: id });
     if (isRightSide) card.classList.add('right-side');
     if (cfg.gold) card.classList.add('gold-card');
+    if (cfg.pending) card.classList.add('pending-card');
 
     const left = mk('div', { class: 'card-left' });
     left.appendChild(mk('img', { src: cfg.imageUrl, alt: cfg.name, loading: 'lazy' }));
@@ -567,30 +1150,32 @@
     nameEl.textContent = cfg.name;
     info.appendChild(nameEl);
 
-    // Kappe Score
-    const total = KEYS.reduce((sum, k) => sum + (cfg.kappe[k] || 0), 0);
-    const barPct = Math.min(total, 100);
+    // Kappe Score — a pending winner has no score yet, so we leave the bar out
+    if (!cfg.pending) {
+      const total = KEYS.reduce((sum, k) => sum + (cfg.kappe[k] || 0), 0);
+      const barPct = Math.min(total, 100);
 
-    const hdr = mk('div', { class: 'kappe-header' });
-    const hl  = mk('span', { class: 'kappe-header-label' }); hl.textContent = 'Kappe-score:';
-    const ht  = mk('span', { class: 'kappe-total' }); ht.textContent = total;
-    hdr.appendChild(hl); hdr.appendChild(ht);
-    info.appendChild(hdr);
+      const hdr = mk('div', { class: 'kappe-header' });
+      const hl  = mk('span', { class: 'kappe-header-label' }); hl.textContent = 'Kappe-score:';
+      const ht  = mk('span', { class: 'kappe-total' }); ht.textContent = total;
+      hdr.appendChild(hl); hdr.appendChild(ht);
+      info.appendChild(hdr);
 
-    // Bar track
-    const barArea = mk('div', { class: 'kappe-bar-area' });
-    const bar = mk('div', { class: 'kappe-bar-container', style: `width:${barPct}%;` });
-    KEYS.forEach(k => {
-      const val = cfg.kappe[k] || 0;
-      const seg = mk('div', { class:'seg-wrapper', style:`flex:${val};` });
-      const lbl = mk('span', { class:'seg-label' }); lbl.textContent = `${LABELS[k]}: ${val}`;
-      const blk = mk('div', { class:'seg-block', style:`background:${kappeColors[k]};` });
-      seg.appendChild(lbl); seg.appendChild(blk);
-      bar.appendChild(seg);
-    });
-    barArea.appendChild(bar);
-    info.appendChild(barArea);
-    
+      // Bar track
+      const barArea = mk('div', { class: 'kappe-bar-area' });
+      const bar = mk('div', { class: 'kappe-bar-container', style: `width:${barPct}%;` });
+      KEYS.forEach(k => {
+        const val = cfg.kappe[k] || 0;
+        const seg = mk('div', { class:'seg-wrapper', style:`flex:${val};` });
+        const lbl = mk('span', { class:'seg-label' }); lbl.textContent = `${LABELS[k]}: ${val}`;
+        const blk = mk('div', { class:'seg-block', style:`background:${kappeColors[k]};` });
+        seg.appendChild(lbl); seg.appendChild(blk);
+        bar.appendChild(seg);
+      });
+      barArea.appendChild(bar);
+      info.appendChild(barArea);
+    }
+
     right.appendChild(info);
 
     // -- Player --
@@ -620,7 +1205,9 @@
       playerWrap.appendChild(script);
     } else {
       const placeholder = mk('div', { class: 'placeholder-podcast' });
-      placeholder.innerHTML = `LÅST KAMP<br><small style="font-size:12px; font-weight:400; opacity:0.8;">${id}</small>`;
+      placeholder.innerHTML = cfg.pending
+        ? `VINNER IKKE KÅRET<br><small style="font-size:12px; font-weight:400; opacity:0.8;">Hør duellen i ⚔️-noden</small>`
+        : `LÅST KAMP<br><small style="font-size:12px; font-weight:400; opacity:0.8;">${id}</small>`;
       playerWrap.appendChild(placeholder);
     }
 
@@ -865,6 +1452,41 @@
         addMiniNode(xMid, yL, finalData.battlePodcast, 'battle');
       }
     }
+
+    drawActiveHighlight();
+  }
+
+  /* Ramme rundt kampen som pågår nå. Legges i lines-layer, altså bak kortene,
+   * så bare kanten og etiketten stikker ut. Måles i samme uskalerte koordinater
+   * som strekene, siden updateLines() alltid kjøres med scale(1). */
+  function drawActiveHighlight() {
+    const linesLayer = document.getElementById('lines-layer');
+    const canvasRect = document.getElementById('canvas').getBoundingClientRect();
+    const els = ACTIVE_MATCH.cards
+      .map(id => document.getElementById(id))
+      .filter(Boolean);
+    if (!els.length) return;
+
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    els.forEach(el => {
+      const b = el.getBoundingClientRect();
+      left   = Math.min(left,   b.left   - canvasRect.left);
+      top    = Math.min(top,    b.top    - canvasRect.top);
+      right  = Math.max(right,  b.right  - canvasRect.left);
+      bottom = Math.max(bottom, b.bottom - canvasRect.top);
+    });
+
+    const pad = 90;
+    const box = mk('div', { id: 'active-highlight' });
+    box.style.left   = (left - pad) + 'px';
+    box.style.top    = (top - pad) + 'px';
+    box.style.width  = (right - left + pad * 2) + 'px';
+    box.style.height = (bottom - top + pad * 2) + 'px';
+
+    const lbl = mk('div', { class: 'active-label' });
+    lbl.textContent = ACTIVE_MATCH.label;
+    box.appendChild(lbl);
+    linesLayer.appendChild(box);
   }
 
   /* ════════════════════════════════════════════════════════════════════
