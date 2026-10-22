@@ -485,7 +485,7 @@
   // Kampen som pågår nå. Rammen tegnes rundt disse kortene — de to som møtes
   // og vinnerplassen de kjemper om. Oppdater når neste duell starter.
   const ACTIVE_MATCH = {
-    cards: ['R-R1-5', 'R-R1-6', 'R-R2-3'],
+    cards: ['L-R1-31', 'L-R1-32', 'L-R2-16'],
     label: 'PÅGÅR NÅ'
   };
 
@@ -570,7 +570,8 @@
     "19852292": ["#87.5 - Vinneren av Wolverine vs. Cyclops", 305],
     "19869326": ["#88 - Poison Ivy vs. Madame Web - Gift og spådomskunst", 2658],
     "19919243": ["#88.5 - Vinneren av Poison Ivy vs. Madame Web", 348],
-    "19959945": ["#89 - Spider-man vs Mr. fantastic, med Pia Ve Dahlen - Nettskytere og bløte dyr", 3380]
+    "19959945": ["#89 - Spider-man vs Mr. fantastic, med Pia Ve Dahlen - Nettskytere og bløte dyr", 3380],
+    "19997860": ["#89.5 - Vinneren av Spider-man vs. Mister Fantastic", 303]
   };
 
   const TOURNAMENT_DATA = {
@@ -1182,14 +1183,23 @@
       }
     },
     "R-R2-3": {
-      name: "?",
-      imageUrl: BLANK_PORTRAIT,
-      kappe: { K: 0, A: 0, P1: 0, P2: 0, E: 0 },
-      pending: true,
+      name: "Spider-Man",
+      imageUrl: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/620-spider-man.jpg",
+      kappe: { K: 18, A: 17, P1: 14, P2: 8, E: 10 },
+      podcast: {
+        containerId: "buzzsprout-player-19997860",
+        scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19997860-89-5-vinneren-av-spider-man-vs-mister-fantastic.js?container_id=buzzsprout-player-19997860&player=small"
+      },
       battlePodcast: {
         containerId: "buzzsprout-player-19959945",
         scriptSrc: "https://www.buzzsprout.com/2188463/episodes/19959945-89-spider-man-vs-mr-fantastic-med-pia-ve-dahlen-nettskytere-og-blote-dyr.js?container_id=buzzsprout-player-19959945&player=small"
       }
+    },
+    "L-R2-16": {
+      name: "?",
+      imageUrl: BLANK_PORTRAIT,
+      kappe: { K: 0, A: 0, P1: 0, P2: 0, E: 0 },
+      pending: true
     },
     "L-R2-1": {
       name: "The Flash",
