@@ -372,6 +372,47 @@
     }
     .card-player > div { width: 100%; }
 
+    /* Podkastspiller (etterligner Buzzsprouts lille spiller) */
+    .kp-player {
+      width: 100%;
+      padding: 14px 18px 10px;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+      font-family: Inter, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      color: #111;
+      text-align: left;
+      user-select: none;
+    }
+    .card-player .kp-player { width: calc(100% - 24px); }
+    .kp-top { display: flex; gap: 12px; align-items: flex-start; }
+    .kp-text { flex: 1; min-width: 0; }
+    .kp-title {
+      font-size: 17px; font-weight: 700; line-height: 1.25;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .kp-show { font-size: 12px; font-weight: 600; margin-top: 2px; }
+    .kp-art { width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0; object-fit: cover; }
+    .kp-controls { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 6px 0 8px; }
+    .kp-btn {
+      border: 0; background: none; padding: 0; color: #111; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font: 600 15px Inter, -apple-system, sans-serif;
+    }
+    .kp-btn svg { width: 100%; height: 100%; display: block; }
+    .kp-skip { width: 26px; height: 26px; }
+    .kp-speed { min-width: 30px; }
+    .kp-play { width: 44px; height: 44px; border-radius: 50%; background: #111; color: #fff; }
+    .kp-play svg { width: 22px; height: 22px; }
+    .kp-player.loading .kp-play { animation: kp-pulse 1s ease-in-out infinite; }
+    @keyframes kp-pulse { 50% { opacity: 0.5; } }
+    .kp-bar {
+      height: 6px; border-radius: 3px; background: #e5e5e5; cursor: pointer;
+      overflow: hidden; touch-action: none;
+    }
+    .kp-fill { height: 100%; width: 0; background: #111; }
+    .kp-time { margin-top: 6px; font-size: 11px; color: #666; text-align: right; font-variant-numeric: tabular-nums; }
+
     /* For unassigned cards / empty podcasts */
     .placeholder-podcast {
       opacity: 0.4;
@@ -450,6 +491,87 @@
 
   // Neutral silhouette used for cards with no hero yet (inline so it can never 404).
   const BLANK_PORTRAIT = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20400%22%3E%3Crect%20width%3D%22400%22%20height%3D%22400%22%20fill%3D%22%23cfc4b6%22%2F%3E%3Ccircle%20cx%3D%22200%22%20cy%3D%22155%22%20r%3D%2272%22%20fill%3D%22%23a89c8c%22%2F%3E%3Cpath%20d%3D%22M60%20400c0-82%2063-132%20140-132s140%2050%20140%20132z%22%20fill%3D%22%23a89c8c%22%2F%3E%3C%2Fsvg%3E";
+
+  // Tittel og lengde (sekunder) per Buzzsprout-episode, slik at spilleren kan vise
+  // dem uten å hente noe fra Buzzsprout. Mangler en episode her, vises en tittel
+  // laget fra lenken, og lengden dukker opp når lyden er lastet.
+  const EPISODE_META = {
+    "12829964": ["#1 - Spider-man - Edderkopper og materialstyrke", 2977],
+    "12872954": ["#2 - Ant-man - Maur og partikkelfysikk", 2833],
+    "12959204": ["#4 - Supermann - Astrofysikk og romvesenbiologi", 2420],
+    "13040153": ["#5 - The Flash - Raske dyr og tidrommet", 2565],
+    "13107135": ["#6 - Catwoman - Katter, og hvorfor de alltid lander på beina", 1820],
+    "13201272": ["#7 - Hulken - Sterke dyr og gammastråling", 2411],
+    "13201287": ["#8 - Poison Ivy - Giftige planter", 1476],
+    "13368139": ["#9 - Captain America - Sprettballer og nedfryste frosker", 1780],
+    "13421461": ["#10 - Blue Beetle - Biller og selv-konstruksjon", 2011],
+    "13448622": ["#11 - Scorpion, med Nora Uggerud - Syre, vannkanoner og skorpioner", 3374],
+    "13515438": ["#12 - Magneto - Elektromagnetiske dyr", 1842],
+    "13625989": ["#13 - Hell Cow, med Kirsti Winnberg - Kyr, blodsugende dyr og effektive fly", 4793],
+    "13698055": ["#14 - Loke - Tidsparadokser og illusoriske dyr", 2758],
+    "13800593": ["#15 - The Thing, med Guro Lilledal Andersen - Stein, dyr med skall og superharde materialer", 5382],
+    "13871206": ["#16 - Tor - Lyn og farene av å bli truffet av det LIVE!", 3939],
+    "13936164": ["#17 - Captain Marvel - Energi og verdensromlevedyktige dyr", 2320],
+    "13976502": ["#18 - Groot - Trær og elastisitet", 2474],
+    "14057514": ["#19 - Black Bolt, med Inge Bremnes - Stemmeteknikk, lyd og bråkete dyr", 5224],
+    "14284455": ["#21 - Wonder Woman, med Marianne Reinertsen - Lassojuss, løgndetektorer og pistolreker", 5229],
+    "14367215": ["#22 - Wolverine - Metaller, dislokasjoner og biologisk regenerering", 3556],
+    "14457211": ["#23 - One Punch Man - Sjøknelere, \"Bro\"-science og Newtons lover", 2655],
+    "14546612": ["#24 - Iron Man - Fisjon, fusjon og vulkansnegler", 2982],
+    "14638063": ["#25 - Green Lantern, med Halvor Høen Hval - Batterier, farger, følelser og Plancks konstant", 5704],
+    "14819088": ["#27 - Madame Web - Dyr og mennesker som se fremtiden", 1909],
+    "14877523": ["#28 - Professor X - Live! Mutantgener og fysikken bak hjernekontroll", 2996],
+    "14993207": ["#29 - The Riddler, med Anne Brugård og John Christian Ottem - Gode nøtter, smarte dyr og spillteori", 4445],
+    "15064920": ["#30 - Storm - Værkontroll og regnskog", 2024],
+    "15159110": ["#31 - Cyclops - Dyr som skyter laser og rubinkvarts", 2216],
+    "15237438": ["#32 - Rogue - Induksjon og stjeling av energi", 2385],
+    "15316032": ["#33 - Nightcrawler - Teleportering og blåfarge", 2149],
+    "15697856": ["#34 - Starlight - Den sjukeste vepsen og det sterkeste lyset", 2101],
+    "15858826": ["#36 - The Joker, med Kristopher Schau - Komedie, hyener og entropi", 4900],
+    "15941295": ["#37 - Ultron, med Ishita Barua - Kunstig intelligens, soppnettverk og chatGPT", 4001],
+    "16018139": ["#38 - Venom - Parasitter og magnetiske materialer", 3378],
+    "16091754": ["#39 - Aquaman 2, med Eystein Hellstrøm Hoddevik - Hard hud, grønt blod, trykk og maur", 4980],
+    "16189580": ["#40 - Dr Strange - Ormhull", 1842],
+    "16483548": ["#44 - Obi-Wan Kenobi - Lasersverd og levende krystaller", 2598],
+    "16567635": ["#45 - Mystique - Metamaterialer og biologiske printere", 2068],
+    "16737680": ["#47 -  Frankensteins monster, med Ida Kathrine Gravensteen -  Rettsmedisin, hjertestartere og gode dyredeler", 6013],
+    "16827489": ["#48 - Pikachu - Pokemon som dyr og statisk elektrisitet", 3351],
+    "16907421": ["#49 - Teenage Mutant Ninja Turtles - Våpen og skilpadder", 3242],
+    "17157443": ["#52 - Human Torch, med Andreas Wahl - Ild, flammer og prompeporer", 3587],
+    "17227626": ["#53 - Mister Fantastic, med Pia Ve Dahlen - Dyr som strekker seg, supermaterialer og termofysikk", 5164],
+    "17321633": ["#54 - Invisible Girl, med Anja Røyne - Lysbrytning, dyr som forsvinner og Cerenkov-stråling", 4999],
+    "17469807": ["#56 - Batman - Teknologiske dingser og flag.... kråker?", 2498],
+    "17623515": ["#58 - Doctor Octopus - Blekkspruter og hjernebølger", 2099],
+    "17696888": ["#59 - Deadpool - Dimensjoner og axolotls", 1677],
+    "17859214": ["#61 - Powerpuff-jentene - Liv, skalering og kjemikalie X", 1894],
+    "18015243": ["#63 - Scarlet Witch - Informasjonsteori og stamceller", 2745],
+    "18101353": ["#64 - Ghost - Utspredte dyr og kvantegreier igjen", 2240],
+    "18178733": ["#65 - Daredevil, med Torfinn Katla Opedal - Ekkolokasjon", 4517],
+    "18410969": ["#68 - Julenissen 3 - Nuptielle gaver og kvantedatamaskiner", 4216],
+    "18469570": ["#69 - Vision - KI > Vidar&Even?", 2642],
+    "18546239": ["#70 - Dr. Manhattan - Bakterier og ikke-lokalitet", 2794],
+    "18626753": ["#71 - Rocket - Rekyl og vaskebjørn", 2073],
+    "18708868": ["#72 - Kirby - Nakensnegler og luftballonger", 2459],
+    "18789441": ["#73 - Ellie, med Tone F. Gregers - Vaksiner, sopp og smitte", 7059],
+    "18868127": ["#74 - Super mario, med Aslak Maurstad - Gaming, læring, dobbelthopp og sopp", 5838],
+    "18949587": ["#75 - Påskeharen 2, med surprise eggspert-gjest - Egg", 2969],
+    "19019437": ["#76 - Hoppekrepsen - Turbulens og svømmebart", 3806],
+    "19097135": ["#77 - Phone Ranger, med Kristopher Schau - Telekommunikasjon og dyreovervåkning", 4549],
+    "19171008": ["#78 - Doctor Doom - DNA, viljestyrke og mørk energi", 3426],
+    "19248436": ["#79 - Clayface - Topologi og slimsopp", 2244],
+    "19394866": ["#81 - Silver Surfer - Sølv, bjørnedyr og gravitasjonsbølger", 3609],
+    "19462772": ["#82 - Doctor Octopus vs. The Flash - Morderisk KI og menneskelig toppfart", 1906],
+    "19497013": ["#82.5 - Vinner av Doctor Octopus vs. The Flash", 315],
+    "19524801": ["#83 - Dr. Manhattan vs. Dr. Doom - Radioaktiv hudkrem og viljestyrke", 2031],
+    "19563137": ["#83.5 - Vinneren av Dr. Manhattan vs. Dr. Doom", 302],
+    "19742123": ["#86 - The Thing vs. Mystique, med Gard Lilledal Andersen - Steinhard hud og skuespill", 3756],
+    "19778050": ["#86.5 - Vinneren av The Thing vs. Mystique, med Gard Lilledal Andersen", 186],
+    "19800819": ["#87 - Wolverine vs. Cyclops - Strontium og laserlys", 2164],
+    "19852292": ["#87.5 - Vinneren av Wolverine vs. Cyclops", 305],
+    "19869326": ["#88 - Poison Ivy vs. Madame Web - Gift og spådomskunst", 2658],
+    "19919243": ["#88.5 - Vinneren av Poison Ivy vs. Madame Web", 348],
+    "19959945": ["#89 - Spider-man vs Mr. fantastic, med Pia Ve Dahlen - Nettskytere og bløte dyr", 3380]
+  };
 
   const TOURNAMENT_DATA = {
     /* ---------- Runde 1, venstre side ---------- */
@@ -1158,6 +1280,142 @@
     };
   }
 
+  /* ════════════════════════════════════════════════════════════════════
+   *  PODKASTSPILLER
+   *  Etterligner Buzzsprouts lille spiller, men uten iframe. Buzzsprout-
+   *  embedden lager én iframe per episode, og med 75 episoder går mobil-
+   *  nettlesere tom for minne. Her vises bare tittel og lengde, og mp3-en
+   *  hentes først når noen trykker play.
+   * ════════════════════════════════════════════════════════════════════ */
+  const PODCAST_SHOW = 'Under Kappa';
+  const PODCAST_ART = 'under-kappa.jpg'; // samme bilde som Buzzsprout-spilleren
+  const SPEEDS = [1, 1.25, 1.5, 2, 0.75];
+  let activeAudio = null; // bare én episode spiller om gangen
+
+  const ICONS = {
+    play:  '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>',
+    pause: '<svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>',
+    back:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.5 9.5A7.5 7.5 0 1 1 4.5 13"/><path d="M5.5 4.5v5h5"/><text x="12" y="16.3" text-anchor="middle" font-size="7.5" font-family="sans-serif" fill="currentColor" stroke="none">15</text></svg>',
+    fwd:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18.5 9.5A7.5 7.5 0 1 0 19.5 13"/><path d="M18.5 4.5v5h-5"/><text x="12" y="16.3" text-anchor="middle" font-size="7.5" font-family="sans-serif" fill="currentColor" stroke="none">30</text></svg>'
+  };
+
+  function fmtTime(sec) {
+    sec = Math.max(0, Math.floor(sec || 0));
+    const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s = sec % 60;
+    const mm = String(m).padStart(2, '0'), ss = String(s).padStart(2, '0');
+    return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  }
+
+  function createPodcastPlayer(podcast) {
+    const m = podcast.scriptSrc.match(/buzzsprout\.com\/(\d+)\/episodes\/(\d+)-([^.?]+)/);
+    if (!m) {
+      const fallback = mk('div', { class: 'placeholder-podcast' });
+      fallback.textContent = 'EPISODEN MANGLER';
+      return fallback;
+    }
+    const [, showId, epId, slug] = m;
+    const meta = EPISODE_META[epId];
+    const title = meta ? meta[0] : slug.replace(/-/g, ' ');
+    let duration = meta ? meta[1] : 0;
+    const mp3 = `https://www.buzzsprout.com/${showId}/episodes/${epId}.mp3`;
+
+    const el = mk('div', { class: 'kp-player' });
+    el.innerHTML = `
+      <div class="kp-top">
+        <div class="kp-text">
+          <div class="kp-title"></div>
+          <div class="kp-show"></div>
+        </div>
+        <img class="kp-art" alt="" loading="lazy" src="${PODCAST_ART}">
+      </div>
+      <div class="kp-controls">
+        <button type="button" class="kp-btn kp-skip" data-skip="-15" aria-label="Spol 15 sekunder tilbake">${ICONS.back}</button>
+        <button type="button" class="kp-btn kp-play" aria-label="Spill av">${ICONS.play}</button>
+        <button type="button" class="kp-btn kp-skip" data-skip="30" aria-label="Spol 30 sekunder fram">${ICONS.fwd}</button>
+        <button type="button" class="kp-btn kp-speed" aria-label="Avspillingshastighet">1×</button>
+      </div>
+      <div class="kp-bar"><div class="kp-fill"></div></div>
+      <div class="kp-time"><span class="kp-cur">00:00</span> | <span class="kp-dur"></span></div>`;
+    el.querySelector('.kp-title').textContent = title;
+    el.querySelector('.kp-title').title = title;
+    el.querySelector('.kp-show').textContent = PODCAST_SHOW;
+
+    const playBtn = el.querySelector('.kp-play');
+    const speedBtn = el.querySelector('.kp-speed');
+    const bar = el.querySelector('.kp-bar');
+    const fill = el.querySelector('.kp-fill');
+    const curEl = el.querySelector('.kp-cur');
+    const durEl = el.querySelector('.kp-dur');
+    durEl.textContent = duration ? fmtTime(duration) : '--:--';
+
+    let audio = null;
+    let speedIdx = 0;
+
+    function render() {
+      const t = audio ? audio.currentTime : 0;
+      curEl.textContent = fmtTime(t);
+      fill.style.width = duration ? `${Math.min(100, t / duration * 100)}%` : '0%';
+    }
+
+    // Lager lydelementet første gang det trengs. Før det er ikke noe lastet.
+    function getAudio() {
+      if (audio) return audio;
+      audio = new Audio();
+      audio.preload = 'auto';
+      audio.src = mp3;
+      audio.playbackRate = SPEEDS[speedIdx];
+      audio.addEventListener('loadedmetadata', () => {
+        if (isFinite(audio.duration)) { duration = audio.duration; durEl.textContent = fmtTime(duration); }
+      });
+      audio.addEventListener('timeupdate', render);
+      audio.addEventListener('play', () => { playBtn.innerHTML = ICONS.pause; playBtn.setAttribute('aria-label', 'Pause'); el.classList.add('playing'); });
+      audio.addEventListener('pause', () => { playBtn.innerHTML = ICONS.play; playBtn.setAttribute('aria-label', 'Spill av'); el.classList.remove('playing'); });
+      audio.addEventListener('waiting', () => el.classList.add('loading'));
+      audio.addEventListener('playing', () => el.classList.remove('loading'));
+      return audio;
+    }
+
+    function play() {
+      const a = getAudio();
+      if (activeAudio && activeAudio !== a) activeAudio.pause();
+      activeAudio = a;
+      a.play().catch(() => {});
+    }
+
+    function seekTo(t) {
+      const a = getAudio();
+      t = Math.max(0, duration ? Math.min(t, duration) : t);
+      if (a.readyState >= 1) a.currentTime = t;
+      else a.addEventListener('loadedmetadata', () => { a.currentTime = t; }, { once: true });
+      render();
+      if (a.paused) play();
+    }
+
+    playBtn.addEventListener('click', () => {
+      if (audio && !audio.paused) audio.pause(); else play();
+    });
+    el.querySelectorAll('.kp-skip').forEach(btn => btn.addEventListener('click', () => {
+      if (!audio) return;
+      seekTo(audio.currentTime + Number(btn.dataset.skip));
+    }));
+    speedBtn.addEventListener('click', () => {
+      speedIdx = (speedIdx + 1) % SPEEDS.length;
+      speedBtn.textContent = `${SPEEDS[speedIdx]}×`;
+      if (audio) audio.playbackRate = SPEEDS[speedIdx];
+    });
+
+    // Tidslinjen skal ikke dra med seg kartet når man trykker på den
+    const seekFromEvent = (clientX) => {
+      if (!duration) return;
+      const r = bar.getBoundingClientRect();
+      seekTo((clientX - r.left) / r.width * duration);
+    };
+    bar.addEventListener('mousedown', e => { e.stopPropagation(); seekFromEvent(e.clientX); });
+    bar.addEventListener('touchstart', e => { e.stopPropagation(); seekFromEvent(e.touches[0].clientX); }, { passive: true });
+
+    return el;
+  }
+
   function createCard(id, cfg, isRightSide) {
     const card = mk('div', { class: 'card', id: id });
     if (isRightSide) card.classList.add('right-side');
@@ -1207,28 +1465,7 @@
     // -- Player --
     const playerWrap = mk('div', { class:'card-player' });
     if (cfg.podcast && cfg.podcast.scriptSrc) {
-      // Create a unique identifier so repeating the same Buzzsprout embed in multiple cards won't break
-      const uniqueSuffix = Math.random().toString(36).substring(2, 8);
-      const uniqueContainerId = `${cfg.podcast.containerId}-${uniqueSuffix}`;
-      
-      const playerDiv = mk('div', { id: uniqueContainerId });
-      playerWrap.appendChild(playerDiv);
-      
-      // We must also accurately replace whatever container_id parameter Buzzsprout gave you in the URL
-      // with our new unique container ID so the script targets the correct wrapper
-      let finalSrc = cfg.podcast.scriptSrc;
-      if (finalSrc.includes('container_id=')) {
-        finalSrc = finalSrc.replace(/container_id=[^&]+/, `container_id=${uniqueContainerId}`);
-      } else {
-        // Fallback just in case it doesn't have it, though standard buzzsprout URLs do
-        finalSrc += (finalSrc.includes('?') ? '&' : '?') + `container_id=${uniqueContainerId}`;
-      }
-
-      const script = document.createElement('script');
-      script.src = finalSrc; 
-      script.type = 'text/javascript'; 
-      script.charset = 'utf-8';
-      playerWrap.appendChild(script);
+      playerWrap.appendChild(createPodcastPlayer(cfg.podcast));
     } else {
       const placeholder = mk('div', { class: 'placeholder-podcast' });
       placeholder.innerHTML = cfg.pending
@@ -1305,8 +1542,6 @@
     const canvasRect = document.getElementById('canvas').getBoundingClientRect();
     const drawnNodes = new Set();
     
-    // Use a global tracker so only one audio plays at a time
-    if (!window.currentAudioPlayer) window.currentAudioPlayer = null;
 
     function addMiniNode(x, y, data, type) {
       const wrap = mk('div', { class: `mini-node ${type}` });
@@ -1325,34 +1560,10 @@
 
       const active = data && data.scriptSrc;
       if (active) {
-        // Embed the Buzzsprout player
         const podWrap = mk('div', { class: 'podcast-wrapper' });
         podWrap.style.width = '100%';
-        podWrap.style.minWidth = '200px';
-        const uniqueSuffix = Math.random().toString(36).substring(2, 9);
-        const uniqueContainerId = `${data.containerId}-${uniqueSuffix}`;
-        
-        const container = mk('div', { id: uniqueContainerId });
-        podWrap.appendChild(container);
-
-        setTimeout(() => {
-          let finalSrc = data.scriptSrc;
-          if (finalSrc.includes('container_id=')) {
-            finalSrc = finalSrc.replace(/container_id=[^&]+/, `container_id=${uniqueContainerId}`);
-          } else {
-            finalSrc += (finalSrc.includes('?') ? '&' : '?') + `container_id=${uniqueContainerId}`;
-          }
-          const script = document.createElement('script');
-          script.src = finalSrc;
-          script.type = 'text/javascript';
-          script.charset = 'utf-8';
-          script.async = true;
-          document.body.appendChild(script);
-        }, 10);
-        
-        // Hide emoji if podcast is loaded
+        podWrap.appendChild(createPodcastPlayer(data));
         emoji.style.display = 'none';
-        
         wrap.appendChild(podWrap);
         
         // Auto-expand node width to fit the player better
