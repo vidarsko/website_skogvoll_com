@@ -5,7 +5,7 @@ IP-adresse til Google. Filene er latin- og latin-ext-delsettene Google Fonts ser
 gang og ikke endret. `css/fonts.css` deklarerer dem, og hver side lenker til den i stedet for
 fonts.googleapis.com.
 
-Inter (variabel, 400–800) brukes på alle sider; Bebas Neue og Barlow Condensed (400, 600, 700) bare på `ukturnering/`. Alle er lisensiert under SIL Open Font License 1.1; lisensteksten ligger i `OFL-*.txt` her.
+Inter (variabel, 400–800) brukes på alle sider. Bebas Neue og Barlow Condensed (400, 600, 700) ble bare brukt på `ukturnering/`, som flyttet til underkappa.no 2026-10-29; filene er latt ligge. Alle er lisensiert under SIL Open Font License 1.1; lisensteksten ligger i `OFL-*.txt` her.
 
 For å legge til en skrift eller vekt: hent Google Fonts-CSS-en for den med en moderne
 nettleser-user-agent, last ned latin- og latin-ext-`.woff2`-filene den peker på, og legg til
