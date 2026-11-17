@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- skogvoll.com: the initials as two strokes, V in amber and S in the light text colour, on the site's near-black panel.
+       Chosen 2026-11-17 as "skogvoll 4" from the proposals in the vault note "Ikoner til nettsidene - 2026-11-17". -->
+  <rect width="32" height="32" rx="7" fill="#0A0908"/><path d="M5.50 9.00 L10.50 23.50 L15.50 9.00" fill="none" stroke="#E8A15E" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M26.5 11 C25 8.3 18.8 8.3 18.8 12 C18.8 15.6 26.8 15.2 26.8 19.6 C26.8 23.8 20.2 24.4 18.4 21.4" fill="none" stroke="#F5F3EF" stroke-width="3" stroke-linecap="round"/></svg>
