@@ -78,16 +78,6 @@
         <section class="panel content-panel summary-panel" aria-labelledby="kort-fortalt">
             <h2 id="kort-fortalt">Kort fortalt</h2>
             <div class="summary-grid">
-                <ul class="summary-list">
-                    <li>Det som vurderes, er mastergradsarbeidet og kandidatens kompetanse. Masteroppgaven er det viktigste grunnlaget, men ikke det eneste (<a href="#hva-vurderer" class="section-ref">§2</a>).</li>
-                    <li>Kandidaten leverer masteroppgaven, med KI-deklarasjonen i, og sin egen vurdering av prosessen. Veileder leverer sin vurdering av prosessen. Deretter følger et muntlig forsvar (<a href="#oversikt" class="section-ref">§3</a>).</li>
-                    <li>Karakteren på det skriftlige arbeidet er sensorenes vurdering av hva oppgaven viser av kandidatens kompetanse, og den er foreløpig. KI-deklarasjonen og prosessvurderingene er kontekst for den vurderingen, og forsvaret prøver den. Den endelige karakteren kan derfor gå begge veier (<a href="#oversikt" class="section-ref">§3</a>).</li>
-                    <li>Gir oppgaven ikke grunnlag for å avgjøre kandidatens kompetanse, er den ikke bestått, også når KI-bruken er riktig deklarert (<a href="#oversikt" class="section-ref">§3</a>).</li>
-                    <li>KI-deklarasjonen gir leseren et bilde av hvordan oppgaven ble til: hva KI har gjort, og hvor mye (<a href="#ki-deklarasjon" class="section-ref">§5</a>).</li>
-                    <li>Deklarert KI-bruk er ikke fusk, men kan gi stryk. Det som har vært fusk til nå, er fortsatt fusk (<a href="#mistanke-fusk" class="section-ref">§13</a>).</li>
-                    <li>Hvor selvstendig arbeidet er, vurderes faglig. Fusk er å gi inntrykk av at arbeidet er mer selvstendig enn det er, og derfor er en uriktig KI-deklarasjon fusk (<a href="#mistanke-fusk" class="section-ref">§13</a>).</li>
-                    <li>Sensorene bruker ikke KI i sensuren (<a href="#sensuren" class="section-ref">§10</a>).</li>
-                </ul>
                 <figure class="summary-figure">
                     <svg viewBox="0 0 540 290" role="img" aria-labelledby="fig-tittel">
                         <title id="fig-tittel">Kandidaten leverer masteroppgaven med KI-deklarasjonen, og kandidat og veileder leverer hver sin vurdering av prosessen. Sensorene setter en foreløpig karakter på det skriftlige ut fra oppgaven, med prosessvurderingene som kontekst. Under det muntlige forsvaret prøver de oppgaven og setter den endelige karakteren.</title>
@@ -125,6 +115,16 @@
                     </svg>
                     <figcaption>Hva som leveres, og hvordan karakterene settes.</figcaption>
                 </figure>
+                <ul class="summary-list">
+                    <li>Det som vurderes, er mastergradsarbeidet og kandidatens kompetanse. Masteroppgaven er det viktigste grunnlaget, men ikke det eneste (<a href="#hva-vurderer" class="section-ref">§2</a>).</li>
+                    <li>Kandidaten leverer masteroppgaven, med KI-deklarasjonen i, og sin egen vurdering av prosessen. Veileder leverer sin vurdering av prosessen. Deretter følger et muntlig forsvar (<a href="#oversikt" class="section-ref">§3</a>).</li>
+                    <li>Karakteren på det skriftlige arbeidet er sensorenes vurdering av hva oppgaven viser av kandidatens kompetanse, og den er foreløpig. KI-deklarasjonen og prosessvurderingene er kontekst for den vurderingen, og forsvaret prøver den. Den endelige karakteren kan derfor gå begge veier (<a href="#oversikt" class="section-ref">§3</a>).</li>
+                    <li>Gir oppgaven ikke grunnlag for å avgjøre kandidatens kompetanse, er den ikke bestått, også når KI-bruken er riktig deklarert (<a href="#oversikt" class="section-ref">§3</a>).</li>
+                    <li>KI-deklarasjonen gir leseren et bilde av hvordan oppgaven ble til: hva KI har gjort, og hvor mye (<a href="#ki-deklarasjon" class="section-ref">§5</a>).</li>
+                    <li>Deklarert KI-bruk er ikke fusk, men kan gi stryk. Det som har vært fusk til nå, er fortsatt fusk (<a href="#mistanke-fusk" class="section-ref">§13</a>).</li>
+                    <li>Hvor selvstendig arbeidet er, vurderes faglig. Fusk er å gi inntrykk av at arbeidet er mer selvstendig enn det er, og derfor er en uriktig KI-deklarasjon fusk (<a href="#mistanke-fusk" class="section-ref">§13</a>).</li>
+                    <li>Sensorene bruker ikke KI i sensuren (<a href="#sensuren" class="section-ref">§10</a>).</li>
+                </ul>
             </div>
         </section>
 
@@ -554,8 +554,7 @@
         /* ---------- summary panel (Kort fortalt) ---------- */
 
         .summary-panel h2 { margin-bottom: 1rem; }
-        .summary-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.6rem; align-items: start; }
-        @media (max-width: 820px) { .summary-grid { grid-template-columns: minmax(0, 1fr); } }
+        .summary-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.6rem; align-items: start; }
         .summary-list { margin: 0; padding-left: 1.2rem; }
         .summary-list li { margin-bottom: 0.65rem; color: var(--text); line-height: 1.55; }
         .summary-list li:last-child { margin-bottom: 0; }
