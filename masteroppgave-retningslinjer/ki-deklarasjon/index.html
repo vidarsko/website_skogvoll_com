@@ -212,14 +212,6 @@
             </div>
         </section>
 
-        <section class="panel content-panel">
-            <h2>Grensetilfeller</h2>
-            <ul class="edge-list">
-                <li><strong>Språkvasker eller redaktør?</strong> Står setningene dine igjen, med rettinger i rettskriving, grammatikk og tegnsetting, er KI språkvasker. Er setningene formulert om, er KI redaktør.</li>
-                <li><strong>Redaktør eller medforfatter?</strong> Var utgangspunktet din egen tekst, er KI redaktør. Var utgangspunktet tekst KI skrev, er KI medforfatter, også om du har bearbeidet teksten etterpå.</li>
-                <li><strong>Samtalepartner eller leser?</strong> Diskuterer dere ideer før eller ved siden av skrivingen, er KI samtalepartner. Kommenterer KI tekst du allerede har skrevet, er KI leser.</li>
-            </ul>
-        </section>
 
         <section class="panel content-panel">
             <h2>Eksempler</h2>
@@ -340,8 +332,8 @@
         .content-panel h2 { margin-bottom: 0.9rem; }
         .lead { color: var(--text-muted); }
         .muted { color: var(--text-muted); font-size: 0.88rem; }
-        .steps, .edge-list { padding-left: 1.3rem; margin: 0 0 1rem; }
-        .steps li, .edge-list li { margin-bottom: 0.5rem; line-height: 1.55; }
+        .steps { padding-left: 1.3rem; margin: 0 0 1rem; }
+        .steps li { margin-bottom: 0.5rem; line-height: 1.55; }
         .levels { display: grid; grid-template-columns: max-content 1fr; gap: 0.45rem 1.2rem; margin: 0 0 1rem; }
         .levels dt { font-weight: 700; }
         .levels dd { margin: 0; color: var(--text-muted); }
@@ -370,7 +362,7 @@
         .role-row .role-desc { color: var(--text-muted); }
         .role-row-body p { font-size: 0.92rem; line-height: 1.5; margin: 0 0 0.6rem; }
         .level-pair { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0.6rem; align-items: stretch; margin: 0.2rem 0 0.7rem; }
-        .level-box { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.55rem 0.75rem; font-size: 0.86rem; line-height: 1.45; color: var(--text-muted); }
+        .level-box { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 0.55rem 0.75rem; font-size: 0.86rem; line-height: 1.45; color: var(--text-muted); background: var(--surface-hover); }
         .level-label { display: block; font-weight: 600; color: var(--text); margin-bottom: 0.15rem; }
         .level-arrow { align-self: center; font-size: 1.25rem; color: var(--text-muted); }
         .role-row-body .role-describe { font-size: 0.86rem; margin: 0; color: var(--text-muted); }
